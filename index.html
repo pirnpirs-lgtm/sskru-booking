@@ -744,36 +744,95 @@
             document.getElementById('bookingModal').classList.add('hidden');
         }
 
-        function handleBookingSubmit(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const roomId = document.getElementById('bookingRoomId').value;
-            const name = document.getElementById('stdName').value;
-            const stdId = document.getElementById('stdId').value;
-            const phone = document.getElementById('stdPhone').value;
-            const timeSlot = document.getElementById('bookingTimeSlot').value;
-            const purpose = document.getElementById('bookingPurpose').value;
+        // -----------------------------------------------------------------
+        // วาง URL ที่ได้จาก Google Apps Script ตรงนี้ (อย่าลืมใส่ URL จริง)
+        // -----------------------------------------------------------------
+        const API_URL = "ใส่_URL_ของ_Google_Apps_Script_ที่นี่";
 
-            const roomIndex = rooms.findIndex(r => r.id === roomId);
-            if (roomIndex !== -1) {
-                rooms[roomIndex].bookings.push({
-                    name, stdId, phone, timeSlot, purpose,
-                    bookedAt: new Date().toISOString(),
-                    status: "PENDING",
-                    reason: ""
+        // ดึงข้อมูลการจองล่าสุดจาก Google Sheets ตอนเปิดหน้าเว็บ
+        async function loadBookingsFromCloud() {
+            try {
+                const response = await fetch(API_URL);
+                const result = await response.json();
+                
+                if (result.status === "success" && result.data) {
+                    // ล้างการจองเดิมในตัวแปร rooms
+                    rooms.forEach(r => {
+                        r.bookings = [];
+                        r.status = "AVAILABLE";
+                        r.currentSubject = "ไม่มีเรียนช่วงเวลานี้";
+                    });
+
+                    // นำข้อมูลจาก Google Sheets เข้าสู่ระบบ
+                    result.data.forEach(booking => {
+                        const targetRoom = rooms.find(r => String(r.id) === String(booking.roomId));
+                        if (targetRoom) {
+                            targetRoom.bookings.push({
+                                name: booking.name,
+                                stdId: booking.stdId,
+                                phone: booking.phone,
+                                timeSlot: booking.timeSlot,
+                                purpose: booking.purpose,
+                                bookedAt: booking.timestamp,
+                                status: "PENDING",
+                                reason: ""
+                            });
+                            targetRoom.status = "BOOKED";
+                            targetRoom.currentSubject = `รอแอดมินอนุมัติ (${booking.timeSlot})`;
+                        }
+                    });
+
+                    saveToStorage();
+                    renderRooms();
+                    if (typeof renderHistory === 'function') renderHistory();
+                    if (typeof renderAdmin === 'function') renderAdmin();
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        // ฟังก์ชันส่งข้อมูลการจองไปยัง Google Sheets
+        async function handleBookingSubmit(e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            const roomId = document.getElementById('bookingRoomId').value;
+            const targetRoom = rooms.find(r => String(r.id) === String(roomId));
+            
+            const payload = {
+                roomId: roomId,
+                roomName: targetRoom ? targetRoom.name : "",
+                name: document.getElementById('stdName').value,
+                stdId: document.getElementById('stdId').value,
+                phone: document.getElementById('stdPhone').value,
+                timeSlot: document.getElementById('bookingTimeSlot').value,
+                purpose: document.getElementById('bookingPurpose').value
+            };
+
+            showToast("กำลังส่งข้อมูลไปยังฐานข้อมูล...");
+
+            try {
+                // ส่งข้อมูลเข้า Google Sheets
+                await fetch(API_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
                 });
 
-                rooms[roomIndex].status = "BOOKED";
-                rooms[roomIndex].currentSubject = `รอแอดมินอนุมัติ (${timeSlot})`;
-
-                saveToStorage();
-                renderRooms();
                 closeBookingModal();
-                showToast(`ส่งคำขอจองเรียบร้อยแล้ว รอการตรวจสอบ`);
+                showToast("ส่งคำขอจองเรียบร้อยแล้ว รอการตรวจสอบ");
+                
+                // ดึงข้อมูลใหม่มาแสดงผลทันที
+                setTimeout(loadBookingsFromCloud, 1500);
+            } catch (error) {
+                showToast("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
             }
         }
 
         function renderHistory() {
             const container = document.getElementById('historyContainer');
+            if (!container) return;
             container.innerHTML = '';
             let hasHistory = false;
 
@@ -788,7 +847,7 @@
                     else if(b.status === 'REJECTED') statusHtml = `<span class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full text-xs font-medium">ไม่อนุมัติ: ${b.reason}</span>`;
 
                     container.innerHTML += `
-                        <div class="p-4 border border-slate-100 rounded-xl bg-slate-50 flex justify-between items-center">
+                        <div class="p-4 border border-slate-100 rounded-xl bg-slate-50 flex justify-between items-center mb-2">
                             <div>
                                 <p class="font-bold text-sm text-slate-800">${room.name}</p>
                                 <p class="text-xs text-slate-500 mt-1">เวลา: ${b.timeSlot} | วัตถุประสงค์: ${b.purpose}</p>
@@ -805,6 +864,7 @@
         // --- ส่วนของผู้ดูแลระบบ ---
         function renderAdmin() {
             const tbody = document.getElementById('adminTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             rooms.forEach(room => {
@@ -838,19 +898,21 @@
         }
 
         function approveBooking(roomId, bookingIndex) {
-            const room = rooms.find(r => r.id === roomId);
+            const room = rooms.find(r => String(r.id) === String(roomId));
             if(room && room.bookings[bookingIndex]) {
                 const booking = room.bookings[bookingIndex];
                 booking.status = 'APPROVED';
                 room.status = 'BOOKED';
                 room.currentSubject = `ถูกจองใช้งาน (${booking.timeSlot})`;
                 
-                sendNotification(
-                    booking.stdId,
-                    'คำขอจองห้องได้รับการอนุมัติ 🎉',
-                    `คำขอจองห้อง "${room.name}" ช่วงเวลา ${booking.timeSlot} ได้รับการอนุมัติเรียบร้อยแล้ว`,
-                    'success'
-                );
+                if (typeof sendNotification === 'function') {
+                    sendNotification(
+                        booking.stdId,
+                        'คำขอจองห้องได้รับการอนุมัติ 🎉',
+                        `คำขอจองห้อง "${room.name}" ช่วงเวลา ${booking.timeSlot} ได้รับการอนุมัติเรียบร้อยแล้ว`,
+                        'success'
+                    );
+                }
 
                 saveToStorage();
                 renderAdmin();
@@ -877,7 +939,7 @@
 
             if(!reason) return alert('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
 
-            const room = rooms.find(r => r.id === roomId);
+            const room = rooms.find(r => String(r.id) === String(roomId));
             if(room && room.bookings[index]) {
                 const booking = room.bookings[index];
                 booking.status = 'REJECTED';
@@ -885,12 +947,14 @@
                 room.status = 'AVAILABLE';
                 room.currentSubject = 'ไม่มีเรียนช่วงเวลานี้';
 
-                sendNotification(
-                    booking.stdId,
-                    'คำขอจองห้องถูกปฏิเสธ ⚠️',
-                    `คำขอจองห้อง "${room.name}" (${booking.timeSlot}) ไม่ได้รับการอนุมัติ เนื่องจาก: ${reason}`,
-                    'danger'
-                );
+                if (typeof sendNotification === 'function') {
+                    sendNotification(
+                        booking.stdId,
+                        'คำขอจองห้องถูกปฏิเสธ ⚠️',
+                        `คำขอจองห้อง "${room.name}" (${booking.timeSlot}) ไม่ได้รับการอนุมัติ เนื่องจาก: ${reason}`,
+                        'danger'
+                    );
+                }
 
                 saveToStorage();
                 closeRejectModal();
@@ -902,15 +966,24 @@
 
         function showToast(message) {
             const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').innerText = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
+            if (toast) {
+                const msgElem = document.getElementById('toastMessage');
+                if (msgElem) msgElem.innerText = message;
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            }
         }
 
+        // โหลดข้อมูล Cloud และเข้าหน้าแรก
         window.onload = function() {
-            switchAuthView('student-login');
+            if (typeof switchAuthView === 'function') {
+                switchAuthView('student-login');
+            }
+            renderRooms();
+            loadBookingsFromCloud();
         };
     </script>
 </body>
