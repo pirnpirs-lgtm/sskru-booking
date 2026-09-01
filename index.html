@@ -434,161 +434,2577 @@
             }
         ];
 
-        // Store data in localStorage or initialize
-        let rooms = JSON.parse(localStorage.getItem('sskru_rooms')) || initialRooms;
-        let users = JSON.parse(localStorage.getItem('sskru_users')) || [];
-        let notifications = JSON.parse(localStorage.getItem('sskru_notifications')) || [];
-        let currentUser = null;
+        // =====================================================
+// SSKRU ROOM BOOKING - CLOUD VERSION
+// ใช้ Google Sheets เป็นฐานข้อมูลกลาง
+// =====================================================
 
-        function saveToStorage() {
-            localStorage.setItem('sskru_rooms', JSON.stringify(rooms));
-            localStorage.setItem('sskru_users', JSON.stringify(users));
-            localStorage.setItem('sskru_notifications', JSON.stringify(notifications));
+const API_URL =
+"https://script.google.com/macros/s/AKfycbz1RXF1-junKfQzrkIHuRR9-ZNFhZpKfT6IS8wrkW8ioJDa1cA8Bk_6Da1HwdKhEy2k/exec";
+
+
+// =====================================================
+// ตัวแปรระบบ
+// =====================================================
+
+let rooms = JSON.parse(
+    localStorage.getItem('sskru_rooms')
+) || initialRooms;
+
+let currentUser = null;
+
+let notifications = [];
+
+
+// =====================================================
+// เก็บเฉพาะข้อมูลห้องในเครื่อง
+// ห้ามเก็บ Users และ Notifications ใน localStorage
+// =====================================================
+
+function saveRoomStorage() {
+
+    localStorage.setItem(
+        'sskru_rooms',
+        JSON.stringify(rooms)
+    );
+
+}
+
+
+// =====================================================
+// LOGIN / REGISTER
+// =====================================================
+
+function switchAuthView(view) {
+
+    document.getElementById('studentLoginBox')
+        .classList.add('hidden');
+
+    document.getElementById('studentRegisterBox')
+        .classList.add('hidden');
+
+    document.getElementById('adminLoginBox')
+        .classList.add('hidden');
+
+
+    const tabStd =
+        document.getElementById('tabBtnStudent');
+
+    const tabAdm =
+        document.getElementById('tabBtnAdmin');
+
+
+    if (view === 'student-login') {
+
+        document.getElementById('studentLoginBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'student-register') {
+
+        document.getElementById('studentRegisterBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'admin-login') {
+
+        document.getElementById('adminLoginBox')
+            .classList.remove('hidden');
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+}
+
+
+// =====================================================
+// สมัครสมาชิกนักศึกษา
+// ใช้ Google Sheets Users
+// =====================================================
+
+async function handleStudentRegister(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const name =
+        document.getElementById('regName')
+            .value.trim();
+
+    const stdId =
+        document.getElementById('regStdId')
+            .value.trim();
+
+    const password =
+        document.getElementById('regPassword')
+            .value.trim();
+
+
+    if (!name || !stdId || !password) {
+
+        alert(
+            'กรุณากรอกข้อมูลให้ครบทุกช่อง'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังสมัครสมาชิก...'
+    );
+
+
+    try {
+
+        /*
+         * ส่งไป Google Apps Script
+         */
+
+        await fetch(API_URL, {
+
+            method: "POST",
+
+            mode: "no-cors",
+
+            headers: {
+                "Content-Type":
+                    "text/plain;charset=utf-8"
+            },
+
+            body: JSON.stringify({
+
+                action: "register",
+
+                name: name,
+
+                stdId: stdId,
+
+                password: password
+
+            })
+
+        });
+
+
+        /*
+         * no-cors จะอ่านผลตอบกลับไม่ได้
+         * จึงถือว่าส่งคำขอสำเร็จ
+         */
+
+        document.getElementById('regName')
+            .value = '';
+
+        document.getElementById('regStdId')
+            .value = '';
+
+        document.getElementById('regPassword')
+            .value = '';
+
+
+        document.getElementById('loginStdId')
+            .value = stdId;
+
+
+        alert(
+            'สมัครสมาชิกเรียบร้อยแล้ว กรุณาเข้าสู่ระบบ'
+        );
+
+
+        switchAuthView(
+            'student-login'
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login นักศึกษา
+// ตรวจสอบจาก Google Sheets Users
+// =====================================================
+
+async function handleStudentLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const stdId =
+        document.getElementById('loginStdId')
+            .value.trim();
+
+    const password =
+        document.getElementById('loginStdPassword')
+            .value;
+
+
+    if (!stdId || !password) {
+
+        alert(
+            'กรุณากรอกรหัสนักศึกษาและรหัสผ่าน'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังตรวจสอบบัญชี...'
+    );
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=login' +
+            '&stdId=' +
+            encodeURIComponent(stdId) +
+            '&password=' +
+            encodeURIComponent(password);
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user
+        ) {
+
+            alert(
+                result.message ||
+                'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง'
+            );
+
+            return;
+
         }
 
-        // --- ระบบสลับมุมมอง Login & Register ---
-        function switchAuthView(view) {
-            document.getElementById('studentLoginBox').classList.add('hidden');
-            document.getElementById('studentRegisterBox').classList.add('hidden');
-            document.getElementById('adminLoginBox').classList.add('hidden');
 
-            const tabStd = document.getElementById('tabBtnStudent');
-            const tabAdm = document.getElementById('tabBtnAdmin');
+        /*
+         * เก็บเฉพาะ Session ของเครื่องนี้
+         * ไม่ใช่ฐานข้อมูลบัญชี
+         */
 
-            if(view === 'student-login') {
-                document.getElementById('studentLoginBox').classList.remove('hidden');
-                tabStd.className = "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
-                tabAdm.className = "w-1/2 py-2 rounded-lg text-slate-600 transition";
-            } else if(view === 'student-register') {
-                document.getElementById('studentRegisterBox').classList.remove('hidden');
-            } else if(view === 'admin-login') {
-                document.getElementById('adminLoginBox').classList.remove('hidden');
-                tabAdm.className = "w-1/2 py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
-                tabStd.className = "w-1/2 py-2 rounded-lg text-slate-600 transition";
+        currentUser = {
+
+            role:
+                result.user.role,
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        /*
+         * เก็บ Session ไว้ในเครื่อง
+         * เพื่อให้ Refresh แล้วไม่หลุดทันที
+         */
+
+        localStorage.setItem(
+            'sskru_current_user',
+            JSON.stringify(currentUser)
+        );
+
+
+        await setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login ผู้ดูแลระบบ
+// ตรวจสอบจาก Users เช่นเดียวกับนักศึกษา
+// =====================================================
+
+async function handleAdminLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const password =
+        document.getElementById(
+            'adminPasswordInput'
+        ).value.trim();
+
+
+    /*
+     * ในหน้า Admin เดิมมีช่องเฉพาะ Password
+     * ใช้ StudentId = admin
+     */
+
+    if (!password) {
+
+        alert(
+            'กรุณากรอกรหัสผ่านผู้ดูแลระบบ'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังตรวจสอบบัญชีผู้ดูแล...'
+    );
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=login' +
+            '&stdId=admin' +
+            '&password=' +
+            encodeURIComponent(password);
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user ||
+            result.user.role !== 'admin'
+        ) {
+
+            alert(
+                'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง'
+            );
+
+            return;
+
+        }
+
+
+        currentUser = {
+
+            role: 'admin',
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        localStorage.setItem(
+            'sskru_current_user',
+            JSON.stringify(currentUser)
+        );
+
+
+        await setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Admin Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// SETUP SESSION
+// =====================================================
+
+async function setupSession() {
+
+    document.getElementById(
+        'authContainer'
+    ).classList.add('hidden');
+
+
+    document.getElementById(
+        'navMenu'
+    ).classList.remove('hidden');
+
+
+    if (
+        currentUser.role === 'admin'
+    ) {
+
+        document.getElementById(
+            'userDisplay'
+        ).innerHTML =
+            '<i class="fa-solid fa-user-shield"></i> แอดมิน';
+
+
+        document.getElementById(
+            'adminTabBtn'
+        ).classList.remove('hidden');
+
+
+        document.getElementById(
+            'historyTabBtn'
+        ).classList.add('hidden');
+
+
+        document.getElementById(
+            'notiTabBtn'
+        ).classList.add('hidden');
+
+
+        /*
+         * โหลดข้อมูล Cloud ใหม่ทุกครั้ง
+         */
+
+        await loadBookingsFromCloud();
+
+
+        switchTab(
+            'adminSection'
+        );
+
+    }
+
+
+    else {
+
+        document.getElementById(
+            'userDisplay'
+        ).innerHTML =
+            `<i class="fa-solid fa-graduation-cap"></i> ${currentUser.name}`;
+
+
+        document.getElementById(
+            'adminTabBtn'
+        ).classList.add('hidden');
+
+
+        document.getElementById(
+            'historyTabBtn'
+        ).classList.remove('hidden');
+
+
+        document.getElementById(
+            'notiTabBtn'
+        ).classList.remove('hidden');
+
+
+        await loadBookingsFromCloud();
+
+        await loadNotifications();
+
+
+        updateNotiBadge();
+
+
+        switchTab(
+            'roomSection'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+function logout() {
+
+    currentUser = null;
+
+    localStorage.removeItem(
+        'sskru_current_user'
+    );
+
+
+    document.getElementById(
+        'navMenu'
+    ).classList.add('hidden');
+
+
+    document.getElementById(
+        'authContainer'
+    ).classList.remove('hidden');
+
+
+    switchTab('');
+
+    switchAuthView(
+        'student-login'
+    );
+
+}
+
+
+// =====================================================
+// TAB
+// =====================================================
+
+function switchTab(tabId) {
+
+    const tabs = [
+
+        'roomSection',
+
+        'historySection',
+
+        'notiSection',
+
+        'adminSection',
+
+        'contactSection'
+
+    ];
+
+
+    tabs.forEach(tab => {
+
+        const el =
+            document.getElementById(tab);
+
+        if (!el) return;
+
+
+        if (tab === tabId) {
+
+            el.classList.remove(
+                'hidden'
+            );
+
+        } else {
+
+            el.classList.add(
+                'hidden'
+            );
+
+        }
+
+    });
+
+
+    if (
+        tabId === 'roomSection'
+    ) {
+
+        renderRooms();
+
+    }
+
+
+    if (
+        tabId === 'historySection'
+    ) {
+
+        renderHistory();
+
+    }
+
+
+    if (
+        tabId === 'notiSection'
+    ) {
+
+        loadNotifications();
+
+    }
+
+
+    if (
+        tabId === 'adminSection'
+    ) {
+
+        renderAdmin();
+
+    }
+
+}
+
+
+// =====================================================
+// โหลด Bookings จาก Google Sheets
+// =====================================================
+
+async function loadBookingsFromCloud() {
+    try {
+        const response =
+            await fetch(
+                API_URL +
+                '?action=bookings'
+            );
+        const result =
+            await response.json();
+        if (
+            !result.success ||
+            !result.data
+        ) {
+            console.error(
+                'โหลดข้อมูลไม่สำเร็จ',
+                result
+            );
+            return;
+        }
+        /*
+         * รีเซ็ตเฉพาะข้อมูลการจอง
+         */
+        rooms.forEach(room => {
+            room.bookings = [];
+            /*
+             * ไม่เปลี่ยน BUSY เดิม
+             * แต่ถ้าเป็น BOOKED จากการจอง Cloud
+             * จะกำหนดใหม่ด้านล่าง
+             */
+            if (
+                room.status !== 'BUSY'
+            ) {
+                room.status =
+                    'AVAILABLE';
+                room.currentSubject =
+                    'ไม่มีเรียนช่วงเวลานี้';
             }
-        }
-
-        function handleStudentRegister(e) {
-            e.preventDefault();
-            const name = document.getElementById('regName').value.trim();
-            const stdId = document.getElementById('regStdId').value.trim();
-            const password = document.getElementById('regPassword').value;
-
-            if(users.some(u => u.stdId === stdId)) {
-                return alert('รหัสนักศึกษานี้ได้ลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ');
-            }
-
-            users.push({ name, stdId, password });
-            saveToStorage();
-            showToast('ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ');
-            switchAuthView('student-login');
-            document.getElementById('loginStdId').value = stdId;
-        }
-
-        // --- สมัครสมาชิกนักศึกษา (แก้ไขป้องกัน Form Submit รีเฟรช) ---
-        function handleStudentRegister(e) {
-            if (e && e.preventDefault) e.preventDefault();
-
-            const nameInput = document.getElementById('regName');
-            const stdIdInput = document.getElementById('regStdId');
-            const passwordInput = document.getElementById('regPassword');
-
-            const name = nameInput.value.trim();
-            const stdId = stdIdInput.value.trim();
-            const password = passwordInput.value.trim();
-
-            if (!name || !stdId || !password) {
-                alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
-                return;
-            }
-
-            let currentUsers = JSON.parse(localStorage.getItem('sskru_users')) || [];
-
-            if (currentUsers.some(u => u.stdId === stdId)) {
-                alert('รหัสนักศึกษานี้ได้ลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ');
-                return;
-            }
-
-            currentUsers.push({ name, stdId, password });
-            localStorage.setItem('sskru_users', JSON.stringify(currentUsers));
-            users = currentUsers;
-
-            nameInput.value = '';
-            stdIdInput.value = '';
-            passwordInput.value = '';
-
-            alert('ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสนักศึกษา');
-            switchAuthView('student-login');
-            document.getElementById('loginStdId').value = stdId;
-        }
-
-        function handleStudentLogin(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const stdId = document.getElementById('loginStdId').value.trim();
-            const password = document.getElementById('loginStdPassword').value;
-
-            const user = users.find(u => u.stdId === stdId && u.password === password);
-            if(!user) return alert('รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง');
-
-            currentUser = { role: 'student', stdId: user.stdId, name: user.name };
-            setupSession();
-        }
-
-        function handleAdminLogin(e) {
-            if (e && e.preventDefault) e.preventDefault();
-            const pwd = document.getElementById('adminPasswordInput').value;
-            if(pwd === '1234') {
-                currentUser = { role: 'admin', name: 'ผู้ดูแลระบบ' };
-                setupSession();
-            } else {
-                alert('รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง (รหัสเริ่มต้น: 1234)');
-            }
-        }
-
-        function setupSession() {
-            document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('navMenu').classList.remove('hidden');
-
-            if(currentUser.role === 'admin') {
-                document.getElementById('userDisplay').innerHTML = '<i class="fa-solid fa-user-shield"></i> แอดมิน';
-                document.getElementById('adminTabBtn').classList.remove('hidden');
-                document.getElementById('historyTabBtn').classList.add('hidden');
-                document.getElementById('notiTabBtn').classList.add('hidden');
-                switchTab('adminSection');
-            } else {
-                document.getElementById('userDisplay').innerHTML = `<i class="fa-solid fa-graduation-cap"></i> ${currentUser.name}`;
-                document.getElementById('adminTabBtn').classList.add('hidden');
-                document.getElementById('historyTabBtn').classList.remove('hidden');
-                document.getElementById('notiTabBtn').classList.remove('hidden');
-                updateNotiBadge();
-                switchTab('roomSection');
-            }
-        }
-
-        function logout() {
-            currentUser = null;
-            document.getElementById('navMenu').classList.add('hidden');
-            document.getElementById('authContainer').classList.remove('hidden');
-            switchTab('');
-            switchAuthView('student-login');
-        }
-
-        function switchTab(tabId) {
-            const tabs = ['roomSection', 'historySection', 'notiSection', 'adminSection', 'contactSection'];
-            tabs.forEach(tab => {
-                const el = document.getElementById(tab);
-                if(el) {
-                    if(tab === tabId) el.classList.remove('hidden');
-                    else el.classList.add('hidden');
+        });
+        /*
+         * เอาข้อมูลจาก Google Sheets
+         */
+        result.data.forEach(
+            booking => {
+                const targetRoom =
+                    rooms.find(
+                        room =>
+                            String(room.id) ===
+                            String(booking.roomId)
+                    );
+                if (!targetRoom) {
+                    return;
                 }
-            });
+                /*
+                 * สำคัญมาก
+                 *
+                 * อ่าน status จาก Sheets
+                 * ไม่บังคับเป็น PENDING
+                 */
+                const bookingStatus =
+                    String(
+                        booking.status ||
+                        'PENDING'
+                    ).toUpperCase();
+                targetRoom.bookings.push({
+                    bookingId:
+                        booking.bookingId,
+                    name:
+                        booking.name,
+                    stdId:
+                        booking.stdId,
+                    phone:
+                        booking.phone,
+                    timeSlot:
+                        booking.timeSlot,
+                    purpose:
+                        booking.purpose,
+                    bookedAt:
+                        booking.timestamp,
+                    status:
+                        bookingStatus,
+                    reason:
+                        booking.reason || ''
+                });
+                /*
+                 * ถ้ามีการจองอยู่
+                 */
+                if (
+                    bookingStatus ===
+                    'APPROVED'
+                ) {
+                    targetRoom.status =
+                        'BOOKED';
+                    targetRoom.currentSubject =
+                        `จองแล้ว (${booking.timeSlot})`;
+                }
+                else if (
+                    bookingStatus ===
+                    'PENDING'
+                ) {
+                    /*
+                     * รออนุมัติ
+                     */
+                    if (
+                        targetRoom.status !==
+                        'BUSY'
+                    ) {
+                        targetRoom.status =
+                            'BOOKED';
+                        targetRoom.currentSubject =
+                            `รอแอดมินอนุมัติ (${booking.timeSlot})`;
+                    }
+                }
+            }
+        );
+        saveRoomStorage();
+        renderRooms();
+        if (
+            typeof renderHistory ===
+            'function'
+        ) {
+            renderHistory();
+        }
+        if (
+            typeof renderAdmin ===
+            'function'
+        ) {
+            renderAdmin();
+        }
+    } catch (error) {
+        console.error(
+            'Cloud Booking Error:',
+            error
+        );
+    }
+}
+// =====================================================
+// ส่งการจอง
+// =====================================================
+async function handleBookingSubmit(e) {
+    if (e) {
+        e.preventDefault();
+    }
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+        alert(
+            'กรุณาเข้าสู่ระบบนักศึกษาก่อน'
+        );
+        return;
+    }
+    const roomId =
+        document.getElementById(
+            'bookingRoomId'
+        ).value;
+    const targetRoom =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+    if (!targetRoom) {
+        alert(
+            'ไม่พบข้อมูลห้อง'
+        );
+        return;
+    }
+    const payload = {
+        action:
+            'booking',
+        roomId:
+            roomId,
+        roomName:
+            targetRoom.name,
+        name:
+            currentUser.name,
+        stdId:
+            currentUser.stdId,
+        phone:
+            document.getElementById(
+                'stdPhone'
+            ).value.trim(),
+        timeSlot:
+            document.getElementById(
+                'bookingTimeSlot'
+            ).value,
+        purpose:
+            document.getElementById(
+                'bookingPurpose'
+            ).value
+    };
+    if (!payload.phone) {
+        alert(
+            'กรุณากรอกเบอร์โทรศัพท์'
+        );
+        return;
+    }
+    showToast(
+        'กำลังส่งข้อมูลการจอง...'
+    );
+    try {
+        await fetch(API_URL, {
+            method:
+                'POST',
+            mode:
+                'no-cors',
+            headers: {
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+            },
+            body:
+                JSON.stringify(payload)
+        });
+        closeBookingModal();
+        showToast(
+            'ส่งคำขอจองเรียบร้อยแล้ว'
+        );
+        /*
+         * รอให้ Apps Script บันทึก
+         * แล้วโหลดจาก Cloud
+         */
 
-            if(tabId === 'roomSection') renderRooms();
-            if(tabId === 'historySection') renderHistory();
-            if(tabId === 'notiSection') renderNotifications();
-            if(tabId === 'adminSection') renderAdmin();
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                await loadNotifications();
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'ไม่สามารถส่งข้อมูลการจองได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// HISTORY
+// =====================================================
+
+function renderHistory() {
+
+    const container =
+        document.getElementById(
+            'historyContainer'
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+    let hasHistory = false;
+
+
+    rooms.forEach(room => {
+
+        room.bookings.forEach(b => {
+
+            if (
+                currentUser &&
+                currentUser.role ===
+                'student' &&
+                String(b.stdId) !==
+                String(currentUser.stdId)
+            ) {
+
+                return;
+
+            }
+
+
+            hasHistory = true;
+
+
+            let statusHtml = '';
+
+
+            if (
+                b.status ===
+                'PENDING'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-medium">รออนุมัติ</span>`;
+
+            }
+
+
+            else if (
+                b.status ===
+                'APPROVED'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium">อนุมัติแล้ว</span>`;
+
+            }
+
+
+            else if (
+                b.status ===
+                'REJECTED'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full text-xs font-medium">ไม่อนุมัติ: ${b.reason || '-'}</span>`;
+            }
+            container.innerHTML += `
+                <div class="p-4 border border-slate-100 rounded-xl bg-slate-50 flex justify-between items-center mb-2">
+                    <div>
+                        <p class="font-bold text-sm text-slate-800">
+                            ${room.name}
+                        </p>
+                        <p class="text-xs text-slate-500 mt-1">
+                            เวลา:
+                            ${b.timeSlot}
+                            |
+                            วัตถุประสงค์:
+                            ${b.purpose}
+                        </p>
+                    </div>
+                    <div>
+                        ${statusHtml}
+                    </div>
+                </div>
+            `;
+        });
+    });
+
+
+    if (!hasHistory) {
+
+        container.innerHTML =
+            '<p class="text-sm text-slate-400 text-center py-6">ยังไม่มีประวัติการจอง</p>';
+
+    }
+
+}
+
+
+// =====================================================
+// ADMIN
+// =====================================================
+
+function renderAdmin() {
+
+    const tbody =
+        document.getElementById(
+            'adminTableBody'
+        );
+
+
+    if (!tbody) {
+        return;
+    }
+
+
+    tbody.innerHTML = '';
+
+
+    rooms.forEach(room => {
+
+        room.bookings.forEach(
+            (b, index) => {
+
+                let actionButtons =
+                    '-';
+
+                let statusText =
+                    `<span class="text-amber-500 font-medium">รอการตรวจสอบ</span>`;
+
+
+                if (
+                    b.status ===
+                    'PENDING'
+                ) {
+
+                    actionButtons = `
+
+                        <button
+
+                            onclick="approveBooking('${room.id}', ${index})"
+
+                            class="text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded text-xs border border-emerald-300 mr-1"
+
+                        >
+
+                            <i class="fa-solid fa-check"></i>
+
+                            อนุมัติ
+
+                        </button>
+
+
+                        <button
+
+                            onclick="openRejectModal('${room.id}', ${index})"
+
+                            class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs border border-rose-300"
+
+                        >
+
+                            <i class="fa-solid fa-xmark"></i>
+
+                            ปฏิเสธ
+
+                        </button>
+
+                    `;
+
+                }
+
+
+                else if (
+                    b.status ===
+                    'APPROVED'
+                ) {
+
+                    statusText =
+                        `<span class="text-emerald-500 font-medium">อนุมัติแล้ว</span>`;
+
+                }
+
+
+                else if (
+                    b.status ===
+                    'REJECTED'
+                ) {
+
+                    statusText =
+                        `<span class="text-rose-500 font-medium">ปฏิเสธแล้ว</span>`;
+
+                }
+
+
+                tbody.innerHTML += `
+
+                    <tr class="hover:bg-slate-50">
+
+                        <td class="px-4 py-3 font-medium text-slate-800">
+
+                            ${room.name}
+
+                        </td>
+
+
+                        <td class="px-4 py-3">
+
+                            ${b.name}
+
+                            <br>
+
+                            <span class="text-xs text-slate-400">
+
+                                รหัส:
+                                ${b.stdId}
+
+                                |
+                                โทร:
+                                ${b.phone}
+
+                            </span>
+
+                        </td>
+
+
+                        <td class="px-4 py-3">
+
+                            ${b.timeSlot}
+
+                        </td>
+
+
+                        <td class="px-4 py-3">
+
+                            ${b.purpose}
+
+                        </td>
+
+
+                        <td class="px-4 py-3">
+
+                            ${statusText}
+
+                        </td>
+
+
+                        <td class="px-4 py-3 text-center">
+
+                            ${actionButtons}
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+    });
+
+}
+
+
+// =====================================================
+// ADMIN APPROVE
+// =====================================================
+
+async function approveBooking(
+    roomId,
+    bookingIndex
+) {
+
+    const room =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+
+
+    if (
+        !room ||
+        !room.bookings[bookingIndex]
+    ) {
+
+        alert(
+            'ไม่พบรายการจอง'
+        );
+
+        return;
+
+    }
+
+
+    const booking =
+        room.bookings[bookingIndex];
+
+
+    if (!booking.bookingId) {
+
+        alert(
+            'รายการนี้เป็นข้อมูลเก่าและยังไม่มี BookingId กรุณาทดสอบกับการจองใหม่'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        booking.status !==
+        'PENDING'
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        !confirm(
+            'ยืนยันอนุมัติการจองนี้หรือไม่?'
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังบันทึกการอนุมัติ...'
+    );
+
+
+    try {
+
+        await fetch(API_URL, {
+
+            method:
+                'POST',
+
+            mode:
+                'no-cors',
+
+            headers: {
+
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+
+            },
+
+            body:
+                JSON.stringify({
+
+                    action:
+                        'approveBooking',
+
+                    bookingId:
+                        booking.bookingId
+
+                })
+
+        });
+
+
+        /*
+         * สำคัญ:
+         * ไม่เปลี่ยนแค่ในเครื่อง
+         * ให้โหลดค่าจริงจาก Sheets
+         */
+
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                showToast(
+                    'อนุมัติการจองเรียบร้อยแล้ว'
+                );
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'เกิดข้อผิดพลาดในการอนุมัติ'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// REJECT MODAL
+// =====================================================
+
+function openRejectModal(
+    roomId,
+    bookingIndex
+) {
+
+    document.getElementById(
+        'rejectRoomId'
+    ).value =
+        roomId;
+
+
+    document.getElementById(
+        'rejectBookingIndex'
+    ).value =
+        bookingIndex;
+
+
+    document.getElementById(
+        'rejectReasonInput'
+    ).value = '';
+
+
+    document.getElementById(
+        'rejectModal'
+    ).classList.remove(
+        'hidden'
+    );
+
+}
+
+
+function closeRejectModal() {
+
+    document.getElementById(
+        'rejectModal'
+    ).classList.add(
+        'hidden'
+    );
+
+}
+
+
+// =====================================================
+// REJECT
+// =====================================================
+
+async function submitReject() {
+
+    const roomId =
+        document.getElementById(
+            'rejectRoomId'
+        ).value;
+
+
+    const index =
+        Number(
+            document.getElementById(
+                'rejectBookingIndex'
+            ).value
+        );
+
+
+    const reason =
+        document.getElementById(
+            'rejectReasonInput'
+        ).value.trim();
+
+
+    if (!reason) {
+
+        alert(
+            'กรุณาระบุเหตุผลที่ไม่อนุมัติ'
+        );
+
+        return;
+
+    }
+
+
+    const room =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+
+
+    if (
+        !room ||
+        !room.bookings[index]
+    ) {
+
+        return;
+
+    }
+
+
+    const booking =
+        room.bookings[index];
+
+
+    if (!booking.bookingId) {
+
+        alert(
+            'รายการนี้เป็นข้อมูลเก่าและยังไม่มี BookingId'
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        await fetch(API_URL, {
+
+            method:
+                'POST',
+
+            mode:
+                'no-cors',
+
+            headers: {
+
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+
+            },
+
+            body:
+                JSON.stringify({
+
+                    action:
+                        'rejectBooking',
+
+                    bookingId:
+                        booking.bookingId,
+
+                    reason:
+                        reason
+
+                })
+
+        });
+
+
+        closeRejectModal();
+
+
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                await loadNotifications();
+
+                showToast(
+                    'ปฏิเสธการจองเรียบร้อยแล้ว'
+                );
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'เกิดข้อผิดพลาดในการปฏิเสธการจอง'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// NOTIFICATIONS
+// =====================================================
+
+async function loadNotifications() {
+
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=getNotifications' +
+            '&stdId=' +
+            encodeURIComponent(
+                currentUser.stdId
+            );
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            result.success
+        ) {
+
+            notifications =
+                result.notifications ||
+                [];
+
+        } else {
+
+            notifications = [];
+
         }
 
+
+        updateNotiBadge();
+
+
+        if (
+            document.getElementById(
+                'notiSection'
+            ) &&
+            !document.getElementById(
+                'notiSection'
+            ).classList.contains(
+                'hidden'
+            )
+        ) {
+
+            renderNotifications();
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            'Notification Error:',
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// NOTIFICATION BADGE
+// =====================================================
+
+function updateNotiBadge() {
+
+    const badge =
+        document.getElementById(
+            'notiBadge'
+        );
+
+
+    if (!badge) {
+        return;
+    }
+
+
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+
+        badge.classList.add(
+            'hidden'
+        );
+
+        return;
+
+    }
+
+
+    const unread =
+        notifications.filter(
+            n =>
+                !(
+                    n.read === true ||
+                    n.read === 'TRUE' ||
+                    n.read === 'true'
+                )
+        ).length;
+
+
+    if (unread > 0) {
+
+        badge.innerText =
+            unread;
+
+        badge.classList.remove(
+            'hidden'
+        );
+
+        badge.classList.add(
+            'flex'
+        );
+
+    } else {
+
+        badge.classList.add(
+            'hidden'
+        );
+
+        badge.classList.remove(
+            'flex'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// แสดง Notification
+// =====================================================
+
+function renderNotifications() {
+
+    const container =
+        document.getElementById(
+            'notiContainer'
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    if (
+        !notifications ||
+        notifications.length === 0
+    ) {
+
+        container.innerHTML =
+            '<p class="text-sm text-slate-400 text-center py-6">ไม่มีข้อความแจ้งเตือน</p>';
+
+        return;
+
+    }
+
+
+    notifications.forEach(
+        n => {
+
+            const isSuccess =
+                n.type ===
+                'success';
+
+
+            container.innerHTML += `
+
+                <div class="p-4 border-l-4 ${
+                    isSuccess
+                    ? 'border-emerald-500 bg-emerald-50/50'
+                    : 'border-rose-500 bg-rose-50/50'
+                } rounded-r-xl border border-slate-100 flex items-start space-x-3">
+
+                    <i class="fa-solid ${
+                        isSuccess
+                        ? 'fa-circle-check text-emerald-500'
+                        : 'fa-circle-xmark text-rose-500'
+                    } text-lg mt-0.5"></i>
+
+
+                    <div class="flex-grow">
+
+                        <div class="flex justify-between items-center">
+
+                            <h4 class="font-bold text-sm text-slate-800">
+
+                                ${n.title}
+
+                            </h4>
+
+
+                            <span class="text-[11px] text-slate-400">
+
+                                ${n.timestamp || ''}
+
+                            </span>
+
+                        </div>
+
+
+                        <p class="text-xs text-slate-600 mt-1">
+
+                            ${n.message}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
+
+    /*
+     * เมื่อเปิดกล่องแจ้งเตือน
+     * ถือว่าอ่านแล้วในหน้าจอ
+     */
+
+    notifications.forEach(
+        n => n.read = true
+    );
+
+
+    updateNotiBadge();
+
+}
+
+
+// =====================================================
+// ล้าง Notification
+// =====================================================
+
+function clearNotifications() {
+
+    /*
+     * รอบนี้ไม่ลบจาก Google Sheets
+     * เพื่อเก็บประวัติไว้
+     */
+
+    notifications = [];
+
+    updateNotiBadge();
+
+    renderNotifications();
+
+}
+
+
+// =====================================================
+// BOOKING MODAL
+// =====================================================
+
+function openBookingModal(roomId) {
+
+    const room =
+        rooms.find(
+            r =>
+                r.id === roomId
+        );
+
+
+    if (!room) {
+        return;
+    }
+
+
+    document.getElementById(
+        'bookingRoomId'
+    ).value =
+        room.id;
+
+
+    document.getElementById(
+        'modalRoomTitle'
+    ).innerText =
+        `จอง ${room.name}`;
+
+
+    document.getElementById(
+        'modalRoomSubtitle'
+    ).innerText =
+        `ตึก ${room.building} | เวลาเปิดทำการ ${room.openTime} น.`;
+
+
+    if (
+        currentUser &&
+        currentUser.role ===
+        'student'
+    ) {
+
+        document.getElementById(
+            'stdName'
+        ).value =
+            currentUser.name;
+
+
+        document.getElementById(
+            'stdId'
+        ).value =
+            currentUser.stdId;
+
+    }
+
+
+    document.getElementById(
+        'bookingModal'
+    ).classList.remove(
+        'hidden'
+    );
+
+}
+
+
+function closeBookingModal() {
+
+    document.getElementById(
+        'bookingModal'
+    ).classList.add(
+        'hidden'
+    );
+
+}
+
+
+// =====================================================
+// TOAST
+// =====================================================
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById(
+            'toast'
+        );
+
+
+    if (!toast) {
+        return;
+    }
+
+
+    const msgElem =
+        document.getElementById(
+            'toastMessage'
+        );
+
+
+    if (msgElem) {
+
+        msgElem.innerText =
+            message;
+
+    }
+
+
+    toast.classList.remove(
+        'translate-y-20',
+        'opacity-0'
+    );
+
+
+    setTimeout(
+        () => {
+
+            toast.classList.add(
+                'translate-y-20',
+                'opacity-0'
+            );
+
+        },
+        3000
+    );
+
+}
+
+
+// =====================================================
+// เปิดเว็บ
+// =====================================================
+
+window.onload = async function() {
+
+    switchAuthView(
+        'student-login'
+    );
+
+
+    /*
+     * โหลดห้องจากเครื่อง
+     */
+
+    renderRooms();
+
+
+    /*
+     * โหลดข้อมูลการจองจาก Google Sheets
+     */
+
+    await loadBookingsFromCloud();
+
+
+    /*
+     * ถ้ามี Session อยู่
+     * ให้เข้าสู่ระบบต่อ
+     */
+
+    const savedUser =
+        localStorage.getItem(
+            'sskru_current_user'
+        );
+
+
+    if (savedUser) {
+
+        try {
+
+            currentUser =
+                JSON.parse(
+                    savedUser
+                );
+
+
+            /*
+             * ตรวจสอบบัญชีจาก Cloud อีกครั้ง
+             */
+
+            const url =
+                API_URL +
+                '?action=login' +
+                '&stdId=' +
+                encodeURIComponent(
+                    currentUser.stdId
+                ) +
+                '&password=';
+
+
+            /*
+             * ไม่สามารถตรวจ Session
+             * ด้วย password ที่ไม่ได้เก็บไว้
+             * จึงยังไม่ Auto Login
+             */
+
+            localStorage.removeItem(
+                'sskru_current_user'
+            );
+
+            currentUser = null;
+
+
+        } catch (error) {
+
+            localStorage.removeItem(
+                'sskru_current_user'
+            );
+
+            currentUser = null;
+
+        }
+
+    }
+
+};
+
+        // =====================================================
+// SSKRU BOOKING - ระบบเชื่อม Google Sheets
+// =====================================================
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbz1RXF1-junKfQzrkIHuRR9-ZNFhZpKfT6IS8wrkW8ioJDa1cA8Bk_6Da1HwdKhEy2k/exec";
+
+let rooms =
+    JSON.parse(localStorage.getItem('sskru_rooms'))
+    || initialRooms;
+
+let notifications = [];
+
+let currentUser = null;
+
+
+// =====================================================
+// เก็บข้อมูลห้องในเครื่อง
+// =====================================================
+
+function saveRoomStorage() {
+
+    localStorage.setItem(
+        'sskru_rooms',
+        JSON.stringify(rooms)
+    );
+
+}
+
+
+// =====================================================
+// สลับ Login / Register
+// =====================================================
+
+function switchAuthView(view) {
+
+    document
+        .getElementById('studentLoginBox')
+        .classList.add('hidden');
+
+    document
+        .getElementById('studentRegisterBox')
+        .classList.add('hidden');
+
+    document
+        .getElementById('adminLoginBox')
+        .classList.add('hidden');
+
+
+    const tabStd =
+        document.getElementById('tabBtnStudent');
+
+    const tabAdm =
+        document.getElementById('tabBtnAdmin');
+
+
+    if (view === 'student-login') {
+
+        document
+            .getElementById('studentLoginBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'student-register') {
+
+        document
+            .getElementById('studentRegisterBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'admin-login') {
+
+        document
+            .getElementById('adminLoginBox')
+            .classList.remove('hidden');
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+}
+
+
+// =====================================================
+// สมัครสมาชิกนักศึกษา
+// บันทึกลง Google Sheets Users
+// =====================================================
+
+async function handleStudentRegister(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const name =
+        document.getElementById('regName')
+            .value.trim();
+
+    const stdId =
+        document.getElementById('regStdId')
+            .value.trim();
+
+    const password =
+        document.getElementById('regPassword')
+            .value.trim();
+
+
+    if (!name || !stdId || !password) {
+
+        alert(
+            'กรุณากรอกข้อมูลให้ครบทุกช่อง'
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        await fetch(API_URL, {
+
+            method: 'POST',
+
+            mode: 'no-cors',
+
+            headers: {
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+            },
+
+            body: JSON.stringify({
+
+                action: 'register',
+
+                name: name,
+
+                stdId: stdId,
+
+                password: password
+
+            })
+
+        });
+
+
+        document.getElementById(
+            'regName'
+        ).value = '';
+
+        document.getElementById(
+            'regStdId'
+        ).value = '';
+
+        document.getElementById(
+            'regPassword'
+        ).value = '';
+
+
+        document.getElementById(
+            'loginStdId'
+        ).value = stdId;
+
+
+        alert(
+            'สมัครสมาชิกเรียบร้อยแล้ว กรุณาเข้าสู่ระบบ'
+        );
+
+
+        switchAuthView(
+            'student-login'
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login นักศึกษา
+// =====================================================
+
+async function handleStudentLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const stdId =
+        document.getElementById(
+            'loginStdId'
+        ).value.trim();
+
+
+    const password =
+        document.getElementById(
+            'loginStdPassword'
+        ).value;
+
+
+    if (!stdId || !password) {
+
+        alert(
+            'กรุณากรอกรหัสนักศึกษาและรหัสผ่าน'
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+
+                API_URL +
+                '?action=login' +
+                '&stdId=' +
+                encodeURIComponent(stdId) +
+                '&password=' +
+                encodeURIComponent(password)
+
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user
+        ) {
+
+            alert(
+                result.message ||
+                'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง'
+            );
+
+            return;
+
+        }
+
+
+        currentUser = {
+
+            role:
+                result.user.role,
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login ผู้ดูแล
+// =====================================================
+
+async function handleAdminLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const password =
+        document.getElementById(
+            'adminPasswordInput'
+        ).value.trim();
+
+
+    if (!password) {
+
+        alert(
+            'กรุณากรอกรหัสผ่านผู้ดูแลระบบ'
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+
+                API_URL +
+                '?action=login' +
+                '&stdId=admin' +
+                '&password=' +
+                encodeURIComponent(password)
+
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user ||
+            result.user.role !== 'admin'
+        ) {
+
+            alert(
+                'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง'
+            );
+
+            return;
+
+        }
+
+
+        currentUser = {
+
+            role: 'admin',
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Admin Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// เข้าสู่ระบบตาม Role
+// =====================================================
+
+function setupSession() {
+
+    document
+        .getElementById('authContainer')
+        .classList.add('hidden');
+
+
+    document
+        .getElementById('navMenu')
+        .classList.remove('hidden');
+
+
+    if (currentUser.role === 'admin') {
+
+        document
+            .getElementById('userDisplay')
+            .innerHTML =
+            '<i class="fa-solid fa-user-shield"></i> แอดมิน';
+
+
+        document
+            .getElementById('adminTabBtn')
+            .classList.remove('hidden');
+
+
+        document
+            .getElementById('historyTabBtn')
+            .classList.add('hidden');
+
+
+        document
+            .getElementById('notiTabBtn')
+            .classList.add('hidden');
+
+
+        switchTab('adminSection');
+
+
+    } else {
+
+        document
+            .getElementById('userDisplay')
+            .innerHTML =
+            `<i class="fa-solid fa-graduation-cap"></i> ${currentUser.name}`;
+
+
+        document
+            .getElementById('adminTabBtn')
+            .classList.add('hidden');
+
+
+        document
+            .getElementById('historyTabBtn')
+            .classList.remove('hidden');
+
+
+        document
+            .getElementById('notiTabBtn')
+            .classList.remove('hidden');
+
+
+        switchTab('roomSection');
+
+    }
+
+}
+
+
+// =====================================================
+// Logout
+// =====================================================
+
+function logout() {
+
+    currentUser = null;
+
+
+    document
+        .getElementById('navMenu')
+        .classList.add('hidden');
+
+
+    document
+        .getElementById('authContainer')
+        .classList.remove('hidden');
+
+
+    switchTab('');
+
+    switchAuthView(
+        'student-login'
+    );
+
+}
+
+
+// =====================================================
+// สลับหน้า
+// =====================================================
+
+function switchTab(tabId) {
+
+    const tabs = [
+
+        'roomSection',
+        'historySection',
+        'notiSection',
+        'adminSection',
+        'contactSection'
+
+    ];
+
+
+    tabs.forEach(tab => {
+
+        const el =
+            document.getElementById(tab);
+
+
+        if (!el) return;
+
+
+        if (tab === tabId) {
+
+            el.classList.remove(
+                'hidden'
+            );
+
+        } else {
+
+            el.classList.add(
+                'hidden'
+            );
+
+        }
+
+    });
+
+
+    if (tabId === 'roomSection') {
+
+        renderRooms();
+
+    }
+
+
+    if (tabId === 'historySection') {
+
+        renderHistory();
+
+    }
+
+
+    if (tabId === 'notiSection') {
+
+        renderNotifications();
+
+    }
+
+
+    if (tabId === 'adminSection') {
+
+        renderAdmin();
+
+    }
+
+}
         // --- เพิ่มฟังก์ชันแสดงห้องกลับคืนมา ---
         function renderRooms() {
             const container = document.getElementById('roomContainer');
@@ -791,42 +3207,134 @@
                 console.error("Error fetching data:", error);
             }
         }
-
-        // ฟังก์ชันส่งข้อมูลการจองไปยัง Google Sheets
+        // =====================================================
+        // ส่งข้อมูลการจองไปยัง Google Sheets
+        // =====================================================
         async function handleBookingSubmit(e) {
-            if (e && e.preventDefault) e.preventDefault();
-
-            const roomId = document.getElementById('bookingRoomId').value;
-            const targetRoom = rooms.find(r => String(r.id) === String(roomId));
-            
+            if (e && e.preventDefault) {
+                e.preventDefault();
+            }
+            // ต้อง Login ก่อนจอง
+            if (
+                !currentUser ||
+                currentUser.role !== 'student'
+            ) {
+                alert(
+                    'กรุณาเข้าสู่ระบบนักศึกษาก่อนจองห้อง'
+                );
+                return;
+            }
+            const roomId =
+                document.getElementById(
+                    'bookingRoomId'
+                ).value;
+            const targetRoom =
+                rooms.find(
+                    r =>
+                        String(r.id) ===
+                        String(roomId)
+                );
+            if (!targetRoom) {
+                alert(
+                    'ไม่พบข้อมูลห้องที่ต้องการจอง'
+                );
+                return;
+            }
+            const phone =
+                document.getElementById(
+                    'stdPhone'
+                ).value.trim();
+            const timeSlot =
+                document.getElementById(
+                    'bookingTimeSlot'
+                ).value;
+            const purpose =
+                document.getElementById(
+                    'bookingPurpose'
+                ).value.trim();
+            if (!phone) {
+                alert(
+                    'กรุณากรอกเบอร์โทรศัพท์'
+                );
+                return;
+            }
+            if (!timeSlot) {
+                alert(
+                    'กรุณาเลือกช่วงเวลาที่ต้องการจอง'
+                );
+                return;
+            }
+            if (!purpose) {
+        
+                alert(
+                    'กรุณากรอกวัตถุประสงค์การจอง'
+                );
+        
+                return;
+            }
+            // =================================================
+            // ข้อมูลที่จะส่งไป Google Sheets
+            // =================================================
             const payload = {
-                roomId: roomId,
-                roomName: targetRoom ? targetRoom.name : "",
-                name: document.getElementById('stdName').value,
-                stdId: document.getElementById('stdId').value,
-                phone: document.getElementById('stdPhone').value,
-                timeSlot: document.getElementById('bookingTimeSlot').value,
-                purpose: document.getElementById('bookingPurpose').value
+                action: 'booking',
+                roomId:
+                    String(roomId),
+                roomName:
+                    targetRoom.name,
+                name:
+                    currentUser.name,
+                stdId:
+                    String(currentUser.stdId),
+                phone:
+                    phone,
+                timeSlot:
+                    timeSlot,
+                purpose:
+                    purpose
             };
-
-            showToast("กำลังส่งข้อมูลไปยังฐานข้อมูล...");
-
+            showToast(
+                'กำลังส่งข้อมูลการจอง...'
+            );
             try {
-                // ส่งข้อมูลเข้า Google Sheets
                 await fetch(API_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type':
+                            'text/plain;charset=utf-8'
+                    },
+                    body:
+                        JSON.stringify(payload)
                 });
-
+                // ปิดหน้าต่างจอง
                 closeBookingModal();
-                showToast("ส่งคำขอจองเรียบร้อยแล้ว รอการตรวจสอบ");
-                
-                // ดึงข้อมูลใหม่มาแสดงผลทันที
-                setTimeout(loadBookingsFromCloud, 1500);
+                // แจ้งผู้ใช้
+                showToast(
+                    'ส่งคำขอจองเรียบร้อยแล้ว รอแอดมินอนุมัติ'
+                );
+                // =================================================
+                // โหลดข้อมูลจาก Google Sheets ใหม่
+                // =================================================
+                setTimeout(
+                    async function() {
+                        await loadBookingsFromCloud();
+                        if (
+                            typeof loadNotifications ===
+                            'function'
+                        ) {
+                            await loadNotifications();
+                        }
+                    },
+                    1500
+                );
             } catch (error) {
-                showToast("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
+                console.error(
+                    'Booking Error:',
+                    error
+                );
+                alert(
+                    'เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล'
+                );
             }
         }
 
@@ -835,11 +3343,9 @@
             if (!container) return;
             container.innerHTML = '';
             let hasHistory = false;
-
             rooms.forEach(room => {
                 room.bookings.forEach(b => {
                     if(currentUser && currentUser.role === 'student' && b.stdId !== currentUser.stdId) return;
-
                     hasHistory = true;
                     let statusHtml = '';
                     if(b.status === 'PENDING') statusHtml = `<span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-medium">รออนุมัติ</span>`;
@@ -913,32 +3419,26 @@
                         'success'
                     );
                 }
-
                 saveToStorage();
                 renderAdmin();
                 renderRooms();
                 showToast('อนุมัติการจองและแจ้งเตือนนักศึกษาแล้ว');
             }
         }
-
         function openRejectModal(roomId, bookingIndex) {
             document.getElementById('rejectRoomId').value = roomId;
             document.getElementById('rejectBookingIndex').value = bookingIndex;
             document.getElementById('rejectReasonInput').value = '';
             document.getElementById('rejectModal').classList.remove('hidden');
         }
-
         function closeRejectModal() {
             document.getElementById('rejectModal').classList.add('hidden');
         }
-
         function submitReject() {
             const roomId = document.getElementById('rejectRoomId').value;
             const index = document.getElementById('rejectBookingIndex').value;
             const reason = document.getElementById('rejectReasonInput').value.trim();
-
             if(!reason) return alert('กรุณาระบุเหตุผลที่ไม่อนุมัติ');
-
             const room = rooms.find(r => String(r.id) === String(roomId));
             if(room && room.bookings[index]) {
                 const booking = room.bookings[index];
@@ -946,7 +3446,6 @@
                 booking.reason = reason;
                 room.status = 'AVAILABLE';
                 room.currentSubject = 'ไม่มีเรียนช่วงเวลานี้';
-
                 if (typeof sendNotification === 'function') {
                     sendNotification(
                         booking.stdId,
@@ -955,7 +3454,6 @@
                         'danger'
                     );
                 }
-
                 saveToStorage();
                 closeRejectModal();
                 renderAdmin();
@@ -963,20 +3461,17 @@
                 showToast('ปฏิเสธการจองและส่งแจ้งเตือนระบุเหตุผลแล้ว');
             }
         }
-
         function showToast(message) {
             const toast = document.getElementById('toast');
             if (toast) {
                 const msgElem = document.getElementById('toastMessage');
                 if (msgElem) msgElem.innerText = message;
                 toast.classList.remove('translate-y-20', 'opacity-0');
-                
                 setTimeout(() => {
                     toast.classList.add('translate-y-20', 'opacity-0');
                 }, 3000);
             }
         }
-
         // โหลดข้อมูล Cloud และเข้าหน้าแรก
         window.onload = function() {
             if (typeof switchAuthView === 'function') {
