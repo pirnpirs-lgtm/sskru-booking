@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็คและจองห้องเรียน มรภ.ศรีสะเกษ (ตึก 3 & ตึก 5)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Prompt) -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-400 text-indigo-950 p-2 rounded-lg font-bold text-xl">
+                    <i class="fa-solid font-bold fa-door-open"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">SSKRU Room Finder</h1>
+                    <p class="text-xs text-indigo-200">ระบบเช็คห้องว่างและจองห้องถ่ายคลิป (ตึก 3 & 5)</p>
+                </div>
+            </div>
+            <!-- แถบเมนู (ซ่อนตอนยังไม่ Login) -->
+            <div id="navMenu" class="hidden flex items-center space-x-4 text-sm">
+                <button onclick="switchTab('roomSection')" class="hover:text-amber-300 transition"><i class="fa-solid fa-house"></i> หน้าแรก</button>
+                <button id="historyTabBtn" onclick="switchTab('historySection')" class="hover:text-amber-300 transition"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติการจอง</button>
+                <button id="notiTabBtn" onclick="switchTab('notiSection')" class="hover:text-amber-300 transition relative">
+                    <i class="fa-solid fa-bell"></i> แจ้งเตือน
+                    <span id="notiBadge" class="hidden absolute -top-1.5 -right-2.5 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full items-center justify-center font-bold">0</span>
+                </button>
+                <button id="adminTabBtn" onclick="switchTab('adminSection')" class="hover:text-amber-300 transition hidden"><i class="fa-solid fa-gear"></i> จัดการคำขอ</button>
+                <button onclick="switchTab('contactSection')" class="hover:text-amber-300 transition"><i class="fa-solid fa-address-book"></i> ติดต่อ</button>
+                
+                <div class="border-l border-indigo-700 pl-4 flex items-center space-x-3">
+                    <span id="userDisplay" class="bg-indigo-800 px-3 py-1 rounded-full text-xs"></span>
+                    <button onclick="logout()" class="text-rose-300 hover:text-rose-400 text-xs font-bold"><i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+        
+        <!-- หน้า Login -->
+       <!-- ส่วน Login & Register นักศึกษา และ แอดมิน -->
+        <div id="authContainer" class="max-w-md mx-auto mt-6">
+            <div class="flex bg-slate-200 p-1 rounded-xl mb-4 text-xs font-semibold">
+                <button id="tabBtnStudent" onclick="switchAuthView('student-login')" class="w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition">นักศึกษา</button>
+                <button id="tabBtnAdmin" onclick="switchAuthView('admin-login')" class="w-1/2 py-2 rounded-lg text-slate-600 transition">ผู้ดูแลระบบ</button>
+            </div>
+
+            <!-- กล่อง Login นักศึกษา -->
+            <div id="studentLoginBox" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="text-center mb-5">
+                    <i class="fa-solid fa-graduation-cap text-4xl text-indigo-600 mb-2"></i>
+                    <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบ (นักศึกษา)</h2>
+                </div>
+                <form onsubmit="handleStudentLogin(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสนักศึกษา</label>
+                        <input type="text" id="loginStdId" required placeholder="เช่น 6612345678" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่าน</label>
+                        <input type="password" id="loginStdPassword" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition">เข้าสู่ระบบ</button>
+                </form>
+                <p class="text-center text-xs text-slate-500 mt-4">ยังไม่มีบัญชี? <a href="javascript:void(0)" onclick="switchAuthView('student-register')" class="text-indigo-600 font-semibold underline">ลงทะเบียนนักศึกษา</a></p>
+            </div>
+
+            <!-- กล่อง สมัครสมาชิกนักศึกษา -->
+            <div id="studentRegisterBox" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="text-center mb-5">
+                    <i class="fa-solid fa-user-plus text-4xl text-indigo-600 mb-2"></i>
+                    <h2 class="text-lg font-bold text-slate-800">ลงทะเบียนบัญชีนักศึกษา</h2>
+                </div>
+                <form onsubmit="handleStudentRegister(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-นามสกุล *</label>
+                        <input type="text" id="regName" required placeholder="นายสมชาย ใจดี" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสนักศึกษา *</label>
+                        <input type="text" id="regStdId" required placeholder="เช่น 6612345678" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่าน *</label>
+                        <input type="password" id="regPassword" required placeholder="ตั้งรหัสผ่านสำหรับเข้าสู่ระบบ" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition">ยืนยันการสมัคร</button>
+                </form>
+                <p class="text-center text-xs text-slate-500 mt-4">มีบัญชีแล้ว? <a href="javascript:void(0)" onclick="switchAuthView('student-login')" class="text-indigo-600 font-semibold underline">กลับไปหน้าล็อกอิน</a></p>
+            </div>
+
+            <!-- กล่อง Login ผู้ดูแลระบบ (รหัส: 1234) -->
+            <div id="adminLoginBox" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="text-center mb-5">
+                    <i class="fa-solid fa-user-shield text-4xl text-slate-800 mb-2"></i>
+                    <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบ (ผู้ดูแลระบบ)</h2>
+                    <p class="text-xs text-slate-400 mt-1">รหัสผ่านชั่วคราวคือ: 1234</p>
+                </div>
+                <form onsubmit="handleAdminLogin(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสผ่านผู้ดูแลระบบ</label>
+                        <input type="password" id="adminPasswordInput" required placeholder="กรอกรหัสผ่าน 1234" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-slate-700 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium transition">เข้าสู่ระบบแอดมิน</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ห่อหุ้มหน้าแรกเดิมไว้ใน roomSection (ซ่อนไว้ก่อน Login) -->
+        <div id="roomSection" class="hidden">
+        <!-- Quick Stats & Filter Bar -->
+        <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                
+                <!-- Filter Building -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">เลือกอาคารเรียน</label>
+                    <select id="buildingFilter" onchange="renderRooms()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="ALL">อาคารทั้งหมด (ตึก 3 และ ตึก 5)</option>
+                        <option value="3">อาคาร 3 (อาคารเฉลิมพระเกียรติ 50 พรรษา (สธ))</option>
+                        <option value="5">อาคาร 5 (อาคารเฉลิมพระเกียรติ 80 พรรษา 12 สิงหาคม 2555)</option>
+                    </select>
+                </div>
+
+                <!-- Filter Time Slot -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ช่วงเวลาที่ต้องการใช้ห้อง</label>
+                    <select id="timeFilter" onchange="renderRooms()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="NOW">เวลาปัจจุบัน (ขณะนี้)</option>
+                        <option value="08:30-10:30">08:30 - 10:30 น.</option>
+                        <option value="10:30-12:30">10:30 - 12:30 น.</option>
+                        <option value="13:00-15:00">13:00 - 14:30 น.</option>
+                        <option value="15:00-16:00">14:30 - 16:00 น.</option>
+                    </select>
+                </div>
+
+                <!-- Filter Status -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">สถานะห้อง</label>
+                    <select id="statusFilter" onchange="renderRooms()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="ALL">สถานะทั้งหมด</option>
+                        <option value="AVAILABLE">ว่างสำหรับใช้งาน</option>
+                        <option value="BUSY">มีเรียน/ใช้งาน</option>
+                        <option value="BOOKED">มีการจองแล้ว</option>
+                    </select>
+                </div>
+
+                <!-- Search Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ค้นหาชื่อห้อง/อุปกรณ์</label>
+                    <div class="relative">
+                        <input type="text" id="searchInput" onkeyup="renderRooms()" placeholder="เช่น 5301, ปลั๊กไฟ, ไมค์..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Status Indicator Legend -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-slate-100 text-xs">
+                <div class="flex items-center space-x-4">
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        <span class="text-slate-600 font-medium">ห้องว่าง (จองได้)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                        <span class="text-slate-600 font-medium">มีเรียนอยู่</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                        <span class="text-slate-600 font-medium">ติดจองแล้ว</span>
+                    </span>
+                </div>
+                <div class="text-slate-400 text-xs">
+                    * หมายเหตุ: อนุญาตให้จองเพื่อถ่ายคลิป/ทำงานกลุ่ม ครั้งละไม่เกิน 3 ชั่วโมง
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Cards Grid -->
+        <div id="roomContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Room Cards will be injected by JavaScript -->
+        </div>
+
+        <!-- Empty State (Hidden by default) -->
+        <div id="emptyState" class="hidden text-center py-12 bg-white rounded-2xl border border-slate-100 mt-4">
+            <i class="fa-solid fa-door-closed text-4xl text-slate-300 mb-3"></i>
+            <h3 class="font-semibold text-slate-600">ไม่พบห้องเรียนที่ตรงกับเงื่อนไข</h3>
+            <p class="text-xs text-slate-400 mt-1">ลองเปลี่ยนเงื่อนไขหรือค้นหาอีกครั้ง</p>
+        </div>
+        </div> <!-- ปิด roomSection -->
+
+        <!-- หน้าประวัติการจอง (นักศึกษา) -->
+        <div id="historySection" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> ประวัติการจองของฉัน</h2>
+            <div id="historyContainer" class="space-y-3"></div>
+        </div>
+        
+        <!-- หน้าแจ้งเตือน (นักศึกษา) -->
+        <div id="notiSection" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-bell text-indigo-500"></i> กล่องข้อความแจ้งเตือน</h2>
+                <button onclick="clearNotifications()" class="text-xs text-rose-500 hover:underline">ล้างข้อความทั้งหมด</button>
+            </div>
+            <div id="notiContainer" class="space-y-3"></div>
+        </div>
+
+        <!-- หน้าผู้ดูแลระบบ (แอดมิน) -->
+        <div id="adminSection" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-4"><i class="fa-solid fa-clipboard-list text-indigo-500"></i> จัดการคำขอจองห้อง</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b">
+                        <tr>
+                            <th class="px-4 py-3">ห้อง</th>
+                            <th class="px-4 py-3">ผู้จอง</th>
+                            <th class="px-4 py-3">เวลา</th>
+                            <th class="px-4 py-3">วัตถุประสงค์</th>
+                            <th class="px-4 py-3">สถานะ</th>
+                            <th class="px-4 py-3 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- หน้าติดต่อ -->
+        <div id="contactSection" class="hidden max-w-2xl mx-auto bg-white rounded-2xl p-6 shadow-sm border border-slate-100 text-center mt-10">
+            <i class="fa-solid fa-headset text-5xl text-indigo-300 mb-4"></i>
+            <h2 class="text-lg font-bold text-slate-800 mb-2">ติดต่อเจ้าหน้าที่อาคาร</h2>
+            <p class="text-sm text-slate-500 mb-6">หากพบปัญหาการใช้งานห้อง อุปกรณ์ชำรุด หรือต้องการความช่วยเหลือเพิ่มเติม</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <h3 class="font-bold text-slate-700 text-sm mb-1">ตึก 3 (ศูนย์คอมพิวเตอร์)</h3>
+                    <p class="text-xs text-slate-500"><i class="fa-solid fa-phone mr-1"></i> โทร: 045-123-456 ต่อ 301</p>
+                    <p class="text-xs text-slate-500 mt-1"><i class="fa-brands fa-line mr-1"></i> Line: @sskru_b3</p>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <h3 class="font-bold text-slate-700 text-sm mb-1">ตึก 5 (อาคารเรียนรวม)</h3>
+                    <p class="text-xs text-slate-500"><i class="fa-solid fa-phone mr-1"></i> โทร: 045-123-456 ต่อ 501</p>
+                    <p class="text-xs text-slate-500 mt-1"><i class="fa-brands fa-line mr-1"></i> Line: @sskru_b5</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal สำหรับระบุเหตุผลการยกเลิก -->
+        <div id="rejectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+                <h3 class="font-bold text-slate-800 mb-2">ระบุเหตุผลที่ไม่อนุมัติ</h3>
+                <input type="hidden" id="rejectRoomId">
+                <input type="hidden" id="rejectBookingIndex">
+                <textarea id="rejectReasonInput" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none mb-4" placeholder="เช่น ชนกับคลาสเรียนเสริมกะทันหัน, แอร์ห้องชำรุด..."></textarea>
+                <div class="flex space-x-3">
+                    <button onclick="closeRejectModal()" class="w-1/2 py-2 border border-slate-200 rounded-xl text-sm font-medium">ยกเลิก</button>
+                    <button onclick="submitReject()" class="w-1/2 py-2 bg-rose-500 text-white rounded-xl text-sm font-medium">ยืนยันปฏิเสธ</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <!-- Modal for Booking Form -->
+    <div id="bookingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            
+            <div class="bg-indigo-900 px-6 py-4 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-base" id="modalRoomTitle">จองห้องเรียน</h3>
+                    <p class="text-xs text-indigo-200" id="modalRoomSubtitle">กรอกข้อมูลการใช้งานเพื่อยืนยันการจอง</p>
+                </div>
+                <button onclick="closeBookingModal()" class="text-indigo-200 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="bookingRoomId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-นามสกุล นักศึกษา</label>
+                    <input type="text" id="stdName" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">รหัสนักศึกษา</label>
+                        <input type="text" id="stdId" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เบอร์โทรศัพท์ *</label>
+                        <input type="tel" id="stdPhone" required placeholder="0812345678" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ช่วงเวลาที่ขอใช้ห้อง *</label>
+                    <select id="bookingTimeSlot" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="08:30-10:30">08:30 - 10:30 น.</option>
+                        <option value="10:30-12:30">10:30 - 12:30 น.</option>
+                        <option value="13:00-15:00">13:00 - 14:30 น.</option>
+                        <option value="15:00-17:00">14:30 - 16:00 น.</option>
+                    </select>
+                <!-- ช่องกรอกเหตุผลเพิ่มเติม (ซ่อนไว้เป็นค่าเริ่มต้นด้วยคลาส hidden) -->
+                 <div id="otherPurposeContainer" class="hidden mt-2">
+                    <input 
+                      type="text" 
+                      id="otherPurposeInput" 
+                      placeholder="โปรดระบุวัตถุประสงค์เพิ่มเติม..." 
+                      class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500"
+                 />
+              </div>
+            </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">วัตถุประสงค์การใช้ห้อง *</label>
+                    <select id="bookingPurpose" required class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <option value="ถ่ายคลิปวิดีโอส่งอาจารย์">ถ่ายคลิปวิดีโอส่งอาจารย์</option>
+                        <option value="ซ้อมนำเสนองาน">ซ้อมนำเสนองาน</option>
+                         <option value="พรีเซนต์งาน">พรีเซนต์งาน</option>
+                        <option value="ประชุม/ทำงานกลุ่ม">ประชุม / ทำงานกลุ่ม</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeBookingModal()" class="w-1/2 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition shadow-sm">ยืนยันการจอง</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 text-sm transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage">ทำรายการสำเร็จ</span>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Mock Room Data for SSKRU Building 3 and Building 5
+        const initialRooms = [
+            {
+                id: "304",
+                building: "3",
+                name: "ห้อง 3401 - ปฏิบัติการคอมพิวเตอร์",
+                floor: 4,
+                capacity: 55,
+                openTime: "08:00 - 16:00",
+                features: ["ปลั๊กไฟทุกโต๊ะ", "เครื่องปรับอากาศ", "กระดานไวท์บอร์ด", "ไมโครโฟน"],
+                status: "BUSY", // BUSY, AVAILABLE, BOOKED
+                currentSubject: "การเขียนโปรแกรมเว็บ (09:00 - 12:00)",
+                bookings: []
+            },
+            {
+                id: "302",
+                building: "3",
+                name: "ห้อง 3402 - ห้องเรียนบรรยาย",
+                floor: 4,
+                capacity: 60,
+                openTime: "08:00 - 16:00",
+                features: ["โปรเจคเตอร์", "กระดานไวท์บอร์ด", "ปลั๊กไฟหน้าห้อง"],
+                status: "AVAILABLE",
+                currentSubject: "ไม่มีเรียนช่วงเวลานี้",
+                bookings: []
+            },
+            {
+                id: "303",
+                building: "3",
+                name: "ห้อง 3405 - ห้องเรียนอภิปรายกลุ่ม",
+                floor: 4,
+                capacity: 30,
+                openTime: "08:00 - 16:00",
+                features: ["แสงธรรมชาติเหมาะถ่ายคลิป", "โต๊ะกลุ่ม", "ปลั๊กไฟ"],
+                status: "AVAILABLE",
+                currentSubject: "ไม่มีเรียนช่วงเวลานี้",
+                bookings: []
+            },
+            {
+                id: "5404",
+                building: "5",
+                name: "ห้อง 5404 - ห้องเรียน/ห้องอบรมคอมพิวเตอร์",
+                floor: 4,
+                capacity: 60,
+                openTime: "08:30 - 16:00",
+                features: ["เวทีหน้าห้อง", "ระบบเสียง/ไมค์", "เครื่องปรับอากาศ"],
+                status: "BUSY",
+                currentSubject: "ภาษาอังกฤษเพื่อการสื่อสาร (13:00 - 16:00)",
+                bookings: []
+            },
+            {
+                id: "5702",
+                building: "5",
+                name: "ห้อง 5702 - ใช้เป็นห้องเรียน/ห้องอบรม",
+                floor: 7,
+                capacity: 60,
+                openTime: "08:30 - 16:00",
+                features: ["ไฟส่องสว่างดีมาก", "เงียบสงบ", "กระดานไวท์บอร์ด"],
+                status: "AVAILABLE",
+                currentSubject: "ไม่มีเรียนช่วงเวลานี้",
+                bookings: []
+            },
+            {
+                id: "5703",
+                building: "5",
+                name: "ห้อง 5703 - ห้องเรียนบรรยาย 2",
+                floor: 4,
+                capacity: 200,
+                openTime: "08:30 - 16:00",
+                features: ["โปรเจคเตอร์", "ปลั๊กไฟหลายจุด","เครื่องปรับอากาศ","ไมค์","ลำโพง"],
+                status: "BOOKED",
+                currentSubject: "ติดจองถ่ายคลิปงานกลุ่ม (13:00 - 15:00)",
+                bookings: [
+                    { timeSlot: "13:00-15:00", name: "นางสาวศิริพร ใจตรง", purpose: "ถ่ายคลิปวิดีโอส่งอาจารย์" }
+                ]
+            }
+        ];
+
+        // =====================================================
+// SSKRU ROOM BOOKING - CLOUD VERSION
+// ใช้ Google Sheets เป็นฐานข้อมูลกลาง
+// =====================================================
+
+const API_URL =
+"https://script.google.com/macros/s/AKfycbz1RXF1-junKfQzrkIHuRR9-ZNFhZpKfT6IS8wrkW8ioJDa1cA8Bk_6Da1HwdKhEy2k/exec";
+
+
+// =====================================================
+// ตัวแปรระบบ
+// =====================================================
+
+let rooms = JSON.parse(
+    localStorage.getItem('sskru_rooms')
+) || initialRooms;
+
+let currentUser = null;
+
+let notifications = [];
+
+let cloudSyncTimer = null;
+
+
+function getNotificationClearKey() {
+    if (!currentUser || !currentUser.stdId) return null;
+    return `sskru_notifications_cleared_before_${currentUser.stdId}`;
+}
+
+
+function getNotificationReadKey() {
+    if (!currentUser || !currentUser.stdId) return null;
+    return `sskru_notifications_read_${currentUser.stdId}`;
+}
+
+
+function getNotificationIdentity(notification) {
+    if (notification.notificationId) {
+        return String(notification.notificationId);
+    }
+
+    return [
+        notification.timestamp || '',
+        notification.title || '',
+        notification.message || ''
+    ].join('|');
+}
+
+
+function getLocallyReadNotifications() {
+    const key = getNotificationReadKey();
+    if (!key) return new Set();
+
+    try {
+        return new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+    } catch (error) {
+        return new Set();
+    }
+}
+
+
+function rememberNotificationsAsRead(items) {
+    const key = getNotificationReadKey();
+    if (!key) return;
+
+    const readIds = getLocallyReadNotifications();
+    items.forEach(item => readIds.add(getNotificationIdentity(item)));
+
+    /* จำกัดขนาดข้อมูลที่เก็บในเครื่อง */
+    const recentIds = Array.from(readIds).slice(-500);
+    localStorage.setItem(key, JSON.stringify(recentIds));
+}
+
+
+function applyLocalNotificationReadState(items) {
+    const readIds = getLocallyReadNotifications();
+
+    return items.map(item => ({
+        ...item,
+        read:
+            item.read === true ||
+            item.read === 'TRUE' ||
+            item.read === 'true' ||
+            readIds.has(getNotificationIdentity(item))
+    }));
+}
+
+
+function getNotificationTime(notification) {
+    const time = Date.parse(notification.timestamp || '');
+    return Number.isNaN(time) ? 0 : time;
+}
+
+
+function filterClearedNotifications(items) {
+    const key = getNotificationClearKey();
+    if (!key) return items;
+
+    const clearedBefore = Number(localStorage.getItem(key) || 0);
+    if (!clearedBefore) return items;
+
+    return items.filter(item => getNotificationTime(item) > clearedBefore);
+}
+
+
+function stopCloudSync() {
+    if (cloudSyncTimer) {
+        clearTimeout(cloudSyncTimer);
+        cloudSyncTimer = null;
+    }
+}
+
+
+function startCloudSync() {
+    stopCloudSync();
+
+    const sync = async () => {
+        if (!currentUser) return;
+
+        await loadBookingsFromCloud();
+
+        if (currentUser.role === 'student') {
+            await loadNotifications();
+        }
+
+        cloudSyncTimer = setTimeout(sync, 10000);
+    };
+
+    cloudSyncTimer = setTimeout(sync, 10000);
+}
+
+
+// =====================================================
+// เก็บเฉพาะข้อมูลห้องในเครื่อง
+// ห้ามเก็บ Users และ Notifications ใน localStorage
+// =====================================================
+
+function saveRoomStorage() {
+
+    localStorage.setItem(
+        'sskru_rooms',
+        JSON.stringify(rooms)
+    );
+
+}
+
+
+// =====================================================
+// LOGIN / REGISTER
+// =====================================================
+
+function switchAuthView(view) {
+
+    document.getElementById('studentLoginBox')
+        .classList.add('hidden');
+
+    document.getElementById('studentRegisterBox')
+        .classList.add('hidden');
+
+    document.getElementById('adminLoginBox')
+        .classList.add('hidden');
+
+
+    const tabStd =
+        document.getElementById('tabBtnStudent');
+
+    const tabAdm =
+        document.getElementById('tabBtnAdmin');
+
+
+    if (view === 'student-login') {
+
+        document.getElementById('studentLoginBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'student-register') {
+
+        document.getElementById('studentRegisterBox')
+            .classList.remove('hidden');
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg bg-white text-indigo-900 shadow-sm transition";
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+
+    else if (view === 'admin-login') {
+
+        document.getElementById('adminLoginBox')
+            .classList.remove('hidden');
+
+        tabAdm.className =
+            "w-1/2 py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
+
+        tabStd.className =
+            "w-1/2 py-2 rounded-lg text-slate-600 transition";
+
+    }
+
+}
+
+
+// =====================================================
+// สมัครสมาชิกนักศึกษา
+// ใช้ Google Sheets Users
+// =====================================================
+
+async function handleStudentRegister(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const name =
+        document.getElementById('regName')
+            .value.trim();
+
+    const stdId =
+        document.getElementById('regStdId')
+            .value.trim();
+
+    const password =
+        document.getElementById('regPassword')
+            .value.trim();
+
+
+    if (!name || !stdId || !password) {
+
+        alert(
+            'กรุณากรอกข้อมูลให้ครบทุกช่อง'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังสมัครสมาชิก...'
+    );
+
+
+    try {
+
+        /*
+         * ส่งไป Google Apps Script
+         */
+
+        await fetch(API_URL, {
+
+            method: "POST",
+
+            mode: "no-cors",
+
+            headers: {
+                "Content-Type":
+                    "text/plain;charset=utf-8"
+            },
+
+            body: JSON.stringify({
+
+                action: "register",
+
+                name: name,
+
+                stdId: stdId,
+
+                password: password
+
+            })
+
+        });
+
+
+        /*
+         * no-cors จะอ่านผลตอบกลับไม่ได้
+         * จึงถือว่าส่งคำขอสำเร็จ
+         */
+
+        document.getElementById('regName')
+            .value = '';
+
+        document.getElementById('regStdId')
+            .value = '';
+
+        document.getElementById('regPassword')
+            .value = '';
+
+
+        document.getElementById('loginStdId')
+            .value = stdId;
+
+
+        alert(
+            'สมัครสมาชิกเรียบร้อยแล้ว กรุณาเข้าสู่ระบบ'
+        );
+
+
+        switchAuthView(
+            'student-login'
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login นักศึกษา
+// ตรวจสอบจาก Google Sheets Users
+// =====================================================
+
+async function handleStudentLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const stdId =
+        document.getElementById('loginStdId')
+            .value.trim();
+
+    const password =
+        document.getElementById('loginStdPassword')
+            .value;
+
+
+    if (!stdId || !password) {
+
+        alert(
+            'กรุณากรอกรหัสนักศึกษาและรหัสผ่าน'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังตรวจสอบบัญชี...'
+    );
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=login' +
+            '&stdId=' +
+            encodeURIComponent(stdId) +
+            '&password=' +
+            encodeURIComponent(password);
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user
+        ) {
+
+            alert(
+                result.message ||
+                'รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง'
+            );
+
+            return;
+
+        }
+
+
+        /*
+         * เก็บเฉพาะ Session ของเครื่องนี้
+         * ไม่ใช่ฐานข้อมูลบัญชี
+         */
+
+        currentUser = {
+
+            role:
+                result.user.role,
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        /*
+         * เก็บ Session ไว้ในเครื่อง
+         * เพื่อให้ Refresh แล้วไม่หลุดทันที
+         */
+
+        localStorage.setItem(
+            'sskru_current_user',
+            JSON.stringify(currentUser)
+        );
+
+
+        await setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// Login ผู้ดูแลระบบ
+// ตรวจสอบจาก Users เช่นเดียวกับนักศึกษา
+// =====================================================
+
+async function handleAdminLogin(e) {
+
+    if (e) {
+        e.preventDefault();
+    }
+
+
+    const password =
+        document.getElementById(
+            'adminPasswordInput'
+        ).value.trim();
+
+
+    /*
+     * ในหน้า Admin เดิมมีช่องเฉพาะ Password
+     * ใช้ StudentId = admin
+     */
+
+    if (!password) {
+
+        alert(
+            'กรุณากรอกรหัสผ่านผู้ดูแลระบบ'
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังตรวจสอบบัญชีผู้ดูแล...'
+    );
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=login' +
+            '&stdId=admin' +
+            '&password=' +
+            encodeURIComponent(password);
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            !result.success ||
+            !result.user ||
+            result.user.role !== 'admin'
+        ) {
+
+            alert(
+                'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง'
+            );
+
+            return;
+
+        }
+
+
+        currentUser = {
+
+            role: 'admin',
+
+            stdId:
+                result.user.stdId,
+
+            name:
+                result.user.name
+
+        };
+
+
+        localStorage.setItem(
+            'sskru_current_user',
+            JSON.stringify(currentUser)
+        );
+
+
+        await setupSession();
+
+
+    } catch (error) {
+
+        console.error(
+            'Admin Login Error:',
+            error
+        );
+
+        alert(
+            'ไม่สามารถเชื่อมต่อ Google Sheets ได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// SETUP SESSION
+// =====================================================
+
+async function setupSession() {
+
+    startCloudSync();
+
+    document.getElementById(
+        'authContainer'
+    ).classList.add('hidden');
+
+
+    document.getElementById(
+        'navMenu'
+    ).classList.remove('hidden');
+
+
+    if (
+        currentUser.role === 'admin'
+    ) {
+
+        document.getElementById(
+            'userDisplay'
+        ).innerHTML =
+            '<i class="fa-solid fa-user-shield"></i> แอดมิน';
+
+
+        document.getElementById(
+            'adminTabBtn'
+        ).classList.remove('hidden');
+
+
+        document.getElementById(
+            'historyTabBtn'
+        ).classList.add('hidden');
+
+
+        document.getElementById(
+            'notiTabBtn'
+        ).classList.add('hidden');
+
+
+        /*
+         * โหลดข้อมูล Cloud ใหม่ทุกครั้ง
+         */
+
+        await loadBookingsFromCloud();
+
+
+        switchTab(
+            'adminSection'
+        );
+
+    }
+
+
+    else {
+
+        document.getElementById(
+            'userDisplay'
+        ).innerHTML =
+            `<i class="fa-solid fa-graduation-cap"></i> ${currentUser.name}`;
+
+
+        document.getElementById(
+            'adminTabBtn'
+        ).classList.add('hidden');
+
+
+        document.getElementById(
+            'historyTabBtn'
+        ).classList.remove('hidden');
+
+
+        document.getElementById(
+            'notiTabBtn'
+        ).classList.remove('hidden');
+
+
+        await loadBookingsFromCloud();
+
+        await loadNotifications();
+
+
+        updateNotiBadge();
+
+
+        switchTab(
+            'roomSection'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// LOGOUT
+// =====================================================
+
+function logout() {
+
+    stopCloudSync();
+
+    currentUser = null;
+
+    localStorage.removeItem(
+        'sskru_current_user'
+    );
+
+
+    document.getElementById(
+        'navMenu'
+    ).classList.add('hidden');
+
+
+    document.getElementById(
+        'authContainer'
+    ).classList.remove('hidden');
+
+
+    switchTab('');
+
+    switchAuthView(
+        'student-login'
+    );
+
+}
+
+
+// =====================================================
+// TAB
+// =====================================================
+
+function switchTab(tabId) {
+
+    const tabs = [
+
+        'roomSection',
+
+        'historySection',
+
+        'notiSection',
+
+        'adminSection',
+
+        'contactSection'
+
+    ];
+
+
+    tabs.forEach(tab => {
+
+        const el =
+            document.getElementById(tab);
+
+        if (!el) return;
+
+
+        if (tab === tabId) {
+
+            el.classList.remove(
+                'hidden'
+            );
+
+        } else {
+
+            el.classList.add(
+                'hidden'
+            );
+
+        }
+
+    });
+
+
+    if (
+        tabId === 'roomSection'
+    ) {
+
+        renderRooms();
+
+    }
+
+
+    if (
+        tabId === 'historySection'
+    ) {
+
+        renderHistory();
+
+    }
+
+
+    if (
+        tabId === 'notiSection'
+    ) {
+
+        loadNotifications();
+
+    }
+
+
+    if (
+        tabId === 'adminSection'
+    ) {
+
+        renderAdmin();
+
+    }
+
+}
+
+
+// =====================================================
+// แสดงรายการห้อง
+// =====================================================
+
+function renderRooms() {
+    const container = document.getElementById('roomContainer');
+    const emptyState = document.getElementById('emptyState');
+    if (!container || !emptyState) return;
+
+    const building = document.getElementById('buildingFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    const filteredRooms = rooms.filter(room => {
+        if (building !== 'ALL' && room.building !== building) return false;
+        if (status !== 'ALL' && room.status !== status) return false;
+
+        if (search) {
+            const matchesName = room.name.toLowerCase().includes(search);
+            const matchesFeature = room.features.some(feature =>
+                feature.toLowerCase().includes(search)
+            );
+            if (!matchesName && !matchesFeature) return false;
+        }
+
+        return true;
+    });
+
+    container.innerHTML = '';
+    emptyState.classList.toggle('hidden', filteredRooms.length > 0);
+
+    filteredRooms.forEach(room => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between';
+
+        let statusBadge;
+        let statusButton;
+
+        if (room.status === 'AVAILABLE') {
+            statusBadge = '<span class="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-medium">ว่าง</span>';
+            statusButton = `<button onclick="openBookingModal('${room.id}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl text-xs transition"><i class="fa-regular fa-calendar-check"></i> จองถ่ายคลิป / ใช้งาน</button>`;
+        } else if (room.status === 'BUSY') {
+            statusBadge = '<span class="bg-rose-100 text-rose-700 text-xs px-2.5 py-1 rounded-full font-medium">มีการเรียนการสอน</span>';
+            statusButton = '<button disabled class="w-full bg-slate-100 text-slate-400 font-medium py-2 rounded-xl text-xs cursor-not-allowed">ไม่สามารถจองได้</button>';
+        } else {
+            statusBadge = '<span class="bg-amber-100 text-amber-700 text-xs px-2.5 py-1 rounded-full font-medium">ติดจองแล้ว</span>';
+            statusButton = `<button onclick="openBookingModal('${room.id}')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-xl text-xs transition"><i class="fa-regular fa-clock"></i> จองรอบช่วงเวลาอื่น</button>`;
+        }
+
+        const featureTags = room.features
+            .map(feature => `<span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-md">${feature}</span>`)
+            .join(' ');
+
+        card.innerHTML = `
+            <div class="p-5">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">ตึก ${room.building} (ชั้น ${room.floor})</span>
+                        <h3 class="font-bold text-slate-800 text-base mt-1">${room.name}</h3>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div class="space-y-1.5 text-xs text-slate-500 mb-4">
+                    <div><i class="fa-regular fa-clock text-slate-400 w-4"></i> เวลาเปิด-ปิด: ${room.openTime} น.</div>
+                    <div><i class="fa-solid fa-users text-slate-400 w-4"></i> ความจุ: ${room.capacity} คน</div>
+                    <div><i class="fa-solid fa-info-circle text-slate-400 w-4"></i> <span class="${room.status === 'AVAILABLE' ? 'text-emerald-600' : 'text-slate-600'} font-medium">${room.currentSubject}</span></div>
+                </div>
+                <div class="flex flex-wrap gap-1 mb-2">${featureTags}</div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100">${statusButton}</div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+
+// =====================================================
+// โหลด Bookings จาก Google Sheets
+// =====================================================
+
+async function loadBookingsFromCloud() {
+    try {
+        const response =
+            await fetch(
+                API_URL +
+                '?action=bookings'
+            );
+        const result =
+            await response.json();
+        if (
+            !result.success ||
+            !result.data
+        ) {
+            console.error(
+                'โหลดข้อมูลไม่สำเร็จ',
+                result
+            );
+            return;
+        }
+        /*
+         * รีเซ็ตเฉพาะข้อมูลการจอง
+         */
+        rooms.forEach(room => {
+            room.bookings = [];
+            /*
+             * ไม่เปลี่ยน BUSY เดิม
+             * แต่ถ้าเป็น BOOKED จากการจอง Cloud
+             * จะกำหนดใหม่ด้านล่าง
+             */
+            if (
+                room.status !== 'BUSY'
+            ) {
+                room.status =
+                    'AVAILABLE';
+                room.currentSubject =
+                    'ไม่มีเรียนช่วงเวลานี้';
+            }
+        });
+        /*
+         * เอาข้อมูลจาก Google Sheets
+         */
+        result.data.forEach(
+            booking => {
+                /* ไม่แสดงข้อมูลเก่าที่ไม่มี BookingId */
+                if (
+                    !booking.bookingId ||
+                    !String(booking.bookingId).trim()
+                ) {
+                    return;
+                }
+
+                const targetRoom =
+                    rooms.find(
+                        room =>
+                            String(room.id) ===
+                            String(booking.roomId)
+                    );
+                if (!targetRoom) {
+                    return;
+                }
+                /*
+                 * สำคัญมาก
+                 *
+                 * อ่าน status จาก Sheets
+                 * ไม่บังคับเป็น PENDING
+                 */
+                const bookingStatus =
+                    String(
+                        booking.status ||
+                        'PENDING'
+                    ).toUpperCase();
+                targetRoom.bookings.push({
+                    bookingId:
+                        booking.bookingId,
+                    name:
+                        booking.name,
+                    stdId:
+                        booking.stdId,
+                    phone:
+                        booking.phone,
+                    timeSlot:
+                        booking.timeSlot,
+                    purpose:
+                        booking.purpose,
+                    bookedAt:
+                        booking.timestamp,
+                    status:
+                        bookingStatus,
+                    reason:
+                        booking.reason || ''
+                });
+                /*
+                 * ถ้ามีการจองอยู่
+                 */
+                if (
+                    bookingStatus ===
+                    'APPROVED'
+                ) {
+                    targetRoom.status =
+                        'BOOKED';
+                    targetRoom.currentSubject =
+                        `จองแล้ว (${booking.timeSlot})`;
+                }
+                else if (
+                    bookingStatus ===
+                    'PENDING'
+                ) {
+                    /*
+                     * รออนุมัติ
+                     */
+                    if (
+                        targetRoom.status !==
+                        'BUSY'
+                    ) {
+                        targetRoom.status =
+                            'BOOKED';
+                        targetRoom.currentSubject =
+                            `รอแอดมินอนุมัติ (${booking.timeSlot})`;
+                    }
+                }
+            }
+        );
+        saveRoomStorage();
+        renderRooms();
+        if (
+            typeof renderHistory ===
+            'function'
+        ) {
+            renderHistory();
+        }
+        if (
+            typeof renderAdmin ===
+            'function'
+        ) {
+            renderAdmin();
+        }
+    } catch (error) {
+        console.error(
+            'Cloud Booking Error:',
+            error
+        );
+    }
+}
+// =====================================================
+// ส่งการจอง
+// =====================================================
+async function handleBookingSubmit(e) {
+    if (e) {
+        e.preventDefault();
+    }
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+        alert(
+            'กรุณาเข้าสู่ระบบนักศึกษาก่อน'
+        );
+        return;
+    }
+    const roomId =
+        document.getElementById(
+            'bookingRoomId'
+        ).value;
+    const targetRoom =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+    if (!targetRoom) {
+        alert(
+            'ไม่พบข้อมูลห้อง'
+        );
+        return;
+    }
+    const payload = {
+        action:
+            'booking',
+        roomId:
+            roomId,
+        roomName:
+            targetRoom.name,
+        name:
+            currentUser.name,
+        stdId:
+            currentUser.stdId,
+        phone:
+            document.getElementById(
+                'stdPhone'
+            ).value.trim(),
+        timeSlot:
+            document.getElementById(
+                'bookingTimeSlot'
+            ).value,
+        purpose:
+            document.getElementById(
+                'bookingPurpose'
+            ).value
+    };
+    if (!payload.phone) {
+        alert(
+            'กรุณากรอกเบอร์โทรศัพท์'
+        );
+        return;
+    }
+    showToast(
+        'กำลังส่งข้อมูลการจอง...'
+    );
+    try {
+        await fetch(API_URL, {
+            method:
+                'POST',
+            mode:
+                'no-cors',
+            headers: {
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+            },
+            body:
+                JSON.stringify(payload)
+        });
+        closeBookingModal();
+        showToast(
+            'ส่งคำขอจองเรียบร้อยแล้ว'
+        );
+        /*
+         * รอให้ Apps Script บันทึก
+         * แล้วโหลดจาก Cloud
+         */
+
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                await loadNotifications();
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'ไม่สามารถส่งข้อมูลการจองได้'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// HISTORY
+// =====================================================
+
+function renderHistory() {
+
+    const container =
+        document.getElementById(
+            'historyContainer'
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+    let hasHistory = false;
+
+
+    rooms.forEach(room => {
+
+        room.bookings.forEach(b => {
+
+            if (
+                currentUser &&
+                currentUser.role ===
+                'student' &&
+                String(b.stdId) !==
+                String(currentUser.stdId)
+            ) {
+
+                return;
+
+            }
+
+
+            hasHistory = true;
+
+
+            let statusHtml = '';
+
+
+            if (
+                b.status ===
+                'PENDING'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-medium">รออนุมัติ</span>`;
+
+            }
+
+
+            else if (
+                b.status ===
+                'APPROVED'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium">อนุมัติแล้ว</span>`;
+
+            }
+
+
+            else if (
+                b.status ===
+                'REJECTED'
+            ) {
+
+                statusHtml =
+                    `<span class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full text-xs font-medium">ไม่อนุมัติ: ${b.reason || '-'}</span>`;
+            }
+            container.innerHTML += `
+                <div class="p-4 border border-slate-100 rounded-xl bg-slate-50 flex justify-between items-center mb-2">
+                    <div>
+                        <p class="font-bold text-sm text-slate-800">
+                            ${room.name}
+                        </p>
+                        <p class="text-xs text-slate-500 mt-1">
+                            เวลา:
+                            ${b.timeSlot}
+                            |
+                            วัตถุประสงค์:
+                            ${b.purpose}
+                        </p>
+                    </div>
+                    <div>
+                        ${statusHtml}
+                    </div>
+                </div>
+            `;
+        });
+    });
+
+
+    if (!hasHistory) {
+
+        container.innerHTML =
+            '<p class="text-sm text-slate-400 text-center py-6">ยังไม่มีประวัติการจอง</p>';
+
+    }
+
+}
+
+
+// =====================================================
+// ADMIN
+// =====================================================
+
+function renderAdmin() {
+    const tbody = document.getElementById('adminTableBody');
+    if (!tbody) return;
+
+    const allBookings = [];
+
+    rooms.forEach(room => {
+        room.bookings.forEach((booking, bookingIndex) => {
+            const submittedTime = Date.parse(booking.bookedAt || '');
+
+            allBookings.push({
+                room,
+                booking,
+                bookingIndex,
+                submittedTime: Number.isNaN(submittedTime) ? 0 : submittedTime
+            });
+        });
+    });
+
+    /* คำขอที่ส่งล่าสุดแสดงเป็นรายการแรกเสมอ */
+    allBookings.sort((a, b) => b.submittedTime - a.submittedTime);
+    tbody.innerHTML = '';
+
+    if (allBookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">ยังไม่มีคำขอจองห้อง</td></tr>';
+        return;
+    }
+
+    allBookings.forEach(({ room, booking: b, bookingIndex, submittedTime }, order) => {
+        let actionButtons = '-';
+        let statusText = '<span class="text-amber-500 font-medium">รอการตรวจสอบ</span>';
+
+        if (b.status === 'PENDING') {
+            actionButtons = `
+                <button onclick="approveBooking('${room.id}', ${bookingIndex})" class="text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded text-xs border border-emerald-300 mr-1">
+                    <i class="fa-solid fa-check"></i> อนุมัติ
+                </button>
+                <button onclick="openRejectModal('${room.id}', ${bookingIndex})" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded text-xs border border-rose-300">
+                    <i class="fa-solid fa-xmark"></i> ปฏิเสธ
+                </button>
+            `;
+        } else if (b.status === 'APPROVED') {
+            statusText = '<span class="text-emerald-500 font-medium">อนุมัติแล้ว</span>';
+        } else if (b.status === 'REJECTED') {
+            statusText = '<span class="text-rose-500 font-medium">ปฏิเสธแล้ว</span>';
+        }
+
+        const submittedText = submittedTime
+            ? new Date(submittedTime).toLocaleString('th-TH', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+            })
+            : 'ไม่ระบุเวลา';
+
+        const latestBadge = order === 0
+            ? '<span class="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">ล่าสุด</span>'
+            : '';
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 ${order === 0 ? 'bg-indigo-50/50' : ''}">
+                <td class="px-4 py-3 font-medium text-slate-800">${room.name}</td>
+                <td class="px-4 py-3">
+                    ${b.name}${latestBadge}<br>
+                    <span class="text-xs text-slate-400">รหัส: ${b.stdId} | โทร: ${b.phone}</span>
+                </td>
+                <td class="px-4 py-3">
+                    ${b.timeSlot}<br>
+                    <span class="text-[11px] text-indigo-500">ส่งเมื่อ ${submittedText}</span>
+                </td>
+                <td class="px-4 py-3">${b.purpose}</td>
+                <td class="px-4 py-3">${statusText}</td>
+                <td class="px-4 py-3 text-center">${actionButtons}</td>
+            </tr>
+        `;
+    });
+
+}
+
+
+// =====================================================
+// ADMIN APPROVE
+// =====================================================
+
+async function approveBooking(
+    roomId,
+    bookingIndex
+) {
+
+    const room =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+
+
+    if (
+        !room ||
+        !room.bookings[bookingIndex]
+    ) {
+
+        alert(
+            'ไม่พบรายการจอง'
+        );
+
+        return;
+
+    }
+
+
+    const booking =
+        room.bookings[bookingIndex];
+
+
+    if (!booking.bookingId) {
+
+        alert(
+            'รายการนี้เป็นข้อมูลเก่าและยังไม่มี BookingId กรุณาทดสอบกับการจองใหม่'
+        );
+
+        return;
+
+    }
+
+
+    if (
+        booking.status !==
+        'PENDING'
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        !confirm(
+            'ยืนยันอนุมัติการจองนี้หรือไม่?'
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    showToast(
+        'กำลังบันทึกการอนุมัติ...'
+    );
+
+    /* ป้องกันการกดอนุมัติรายการเดิมซ้ำระหว่างรอ Cloud บันทึก */
+    booking.status = 'PROCESSING';
+    renderAdmin();
+
+
+    try {
+
+        await fetch(API_URL, {
+
+            method:
+                'POST',
+
+            mode:
+                'no-cors',
+
+            headers: {
+
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+
+            },
+
+            body:
+                JSON.stringify({
+
+                    action:
+                        'approveBooking',
+
+                    bookingId:
+                        booking.bookingId
+
+                })
+
+        });
+
+
+        /*
+         * สำคัญ:
+         * ไม่เปลี่ยนแค่ในเครื่อง
+         * ให้โหลดค่าจริงจาก Sheets
+         */
+
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                showToast(
+                    'อนุมัติการจองเรียบร้อยแล้ว'
+                );
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        booking.status = 'PENDING';
+        renderAdmin();
+
+        console.error(error);
+
+        alert(
+            'เกิดข้อผิดพลาดในการอนุมัติ'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// REJECT MODAL
+// =====================================================
+
+function openRejectModal(
+    roomId,
+    bookingIndex
+) {
+
+    document.getElementById(
+        'rejectRoomId'
+    ).value =
+        roomId;
+
+
+    document.getElementById(
+        'rejectBookingIndex'
+    ).value =
+        bookingIndex;
+
+
+    document.getElementById(
+        'rejectReasonInput'
+    ).value = '';
+
+
+    document.getElementById(
+        'rejectModal'
+    ).classList.remove(
+        'hidden'
+    );
+
+}
+
+
+function closeRejectModal() {
+
+    document.getElementById(
+        'rejectModal'
+    ).classList.add(
+        'hidden'
+    );
+
+}
+
+
+// =====================================================
+// REJECT
+// =====================================================
+
+async function submitReject() {
+
+    const roomId =
+        document.getElementById(
+            'rejectRoomId'
+        ).value;
+
+
+    const index =
+        Number(
+            document.getElementById(
+                'rejectBookingIndex'
+            ).value
+        );
+
+
+    const reason =
+        document.getElementById(
+            'rejectReasonInput'
+        ).value.trim();
+
+
+    if (!reason) {
+
+        alert(
+            'กรุณาระบุเหตุผลที่ไม่อนุมัติ'
+        );
+
+        return;
+
+    }
+
+
+    const room =
+        rooms.find(
+            r =>
+                String(r.id) ===
+                String(roomId)
+        );
+
+
+    if (
+        !room ||
+        !room.bookings[index]
+    ) {
+
+        return;
+
+    }
+
+
+    const booking =
+        room.bookings[index];
+
+
+    if (!booking.bookingId) {
+
+        alert(
+            'รายการนี้เป็นข้อมูลเก่าและยังไม่มี BookingId'
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        await fetch(API_URL, {
+
+            method:
+                'POST',
+
+            mode:
+                'no-cors',
+
+            headers: {
+
+                'Content-Type':
+                    'text/plain;charset=utf-8'
+
+            },
+
+            body:
+                JSON.stringify({
+
+                    action:
+                        'rejectBooking',
+
+                    bookingId:
+                        booking.bookingId,
+
+                    reason:
+                        reason
+
+                })
+
+        });
+
+
+        closeRejectModal();
+
+
+        setTimeout(
+            async () => {
+
+                await loadBookingsFromCloud();
+
+                await loadNotifications();
+
+                showToast(
+                    'ปฏิเสธการจองเรียบร้อยแล้ว'
+                );
+
+            },
+            1500
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            'เกิดข้อผิดพลาดในการปฏิเสธการจอง'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// NOTIFICATIONS
+// =====================================================
+
+async function loadNotifications() {
+
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const url =
+            API_URL +
+            '?action=getNotifications' +
+            '&stdId=' +
+            encodeURIComponent(
+                currentUser.stdId
+            );
+
+
+        const response =
+            await fetch(url);
+
+
+        const result =
+            await response.json();
+
+
+        if (
+            result.success
+        ) {
+
+            notifications =
+                applyLocalNotificationReadState(
+                    filterClearedNotifications(
+                        result.notifications || []
+                    )
+                );
+
+        } else {
+
+            notifications = [];
+
+        }
+
+
+        updateNotiBadge();
+
+
+        if (
+            document.getElementById(
+                'notiSection'
+            ) &&
+            !document.getElementById(
+                'notiSection'
+            ).classList.contains(
+                'hidden'
+            )
+        ) {
+
+            renderNotifications();
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            'Notification Error:',
+            error
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// NOTIFICATION BADGE
+// =====================================================
+
+function updateNotiBadge() {
+
+    const badge =
+        document.getElementById(
+            'notiBadge'
+        );
+
+
+    if (!badge) {
+        return;
+    }
+
+
+    if (
+        !currentUser ||
+        currentUser.role !==
+        'student'
+    ) {
+
+        badge.classList.add(
+            'hidden'
+        );
+
+        return;
+
+    }
+
+
+    const unread =
+        notifications.filter(
+            n =>
+                !(
+                    n.read === true ||
+                    n.read === 'TRUE' ||
+                    n.read === 'true'
+                )
+        ).length;
+
+
+    if (unread > 0) {
+
+        badge.innerText =
+            unread;
+
+        badge.classList.remove(
+            'hidden'
+        );
+
+        badge.classList.add(
+            'flex'
+        );
+
+    } else {
+
+        badge.classList.add(
+            'hidden'
+        );
+
+        badge.classList.remove(
+            'flex'
+        );
+
+    }
+
+}
+
+
+// =====================================================
+// แสดง Notification
+// =====================================================
+
+function renderNotifications() {
+
+    const container =
+        document.getElementById(
+            'notiContainer'
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = '';
+
+
+    if (
+        !notifications ||
+        notifications.length === 0
+    ) {
+
+        container.innerHTML =
+            '<p class="text-sm text-slate-400 text-center py-6">ไม่มีข้อความแจ้งเตือน</p>';
+
+        return;
+
+    }
+
+
+    notifications.forEach(
+        n => {
+
+            const isSuccess =
+                n.type ===
+                'success';
+
+
+            container.innerHTML += `
+
+                <div class="p-4 border-l-4 ${
+                    isSuccess
+                    ? 'border-emerald-500 bg-emerald-50/50'
+                    : 'border-rose-500 bg-rose-50/50'
+                } rounded-r-xl border border-slate-100 flex items-start space-x-3">
+
+                    <i class="fa-solid ${
+                        isSuccess
+                        ? 'fa-circle-check text-emerald-500'
+                        : 'fa-circle-xmark text-rose-500'
+                    } text-lg mt-0.5"></i>
+
+
+                    <div class="flex-grow">
+
+                        <div class="flex justify-between items-center">
+
+                            <h4 class="font-bold text-sm text-slate-800">
+
+                                ${n.title}
+
+                            </h4>
+
+
+                            <span class="text-[11px] text-slate-400">
+
+                                ${n.timestamp || ''}
+
+                            </span>
+
+                        </div>
+
+
+                        <p class="text-xs text-slate-600 mt-1">
+
+                            ${n.message}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
+
+    /*
+     * เมื่อเปิดกล่องแจ้งเตือน
+     * ถือว่าอ่านแล้วในหน้าจอ
+     */
+
+    notifications.forEach(
+        n => n.read = true
+    );
+
+    rememberNotificationsAsRead(notifications);
+
+
+    updateNotiBadge();
+
+}
+
+
+// =====================================================
+// ล้าง Notification
+// =====================================================
+
+function clearNotifications() {
+
+    const key = getNotificationClearKey();
+    if (key) {
+        localStorage.setItem(key, String(Date.now()));
+    }
+
+    notifications = [];
+
+    updateNotiBadge();
+
+    renderNotifications();
+
+}
+
+
+// =====================================================
+// BOOKING MODAL
+// =====================================================
+
+function openBookingModal(roomId) {
+
+    const room =
+        rooms.find(
+            r =>
+                r.id === roomId
+        );
+
+
+    if (!room) {
+        return;
+    }
+
+
+    document.getElementById(
+        'bookingRoomId'
+    ).value =
+        room.id;
+
+
+    document.getElementById(
+        'modalRoomTitle'
+    ).innerText =
+        `จอง ${room.name}`;
+
+
+    document.getElementById(
+        'modalRoomSubtitle'
+    ).innerText =
+        `ตึก ${room.building} | เวลาเปิดทำการ ${room.openTime} น.`;
+
+
+    if (
+        currentUser &&
+        currentUser.role ===
+        'student'
+    ) {
+
+        document.getElementById(
+            'stdName'
+        ).value =
+            currentUser.name;
+
+
+        document.getElementById(
+            'stdId'
+        ).value =
+            currentUser.stdId;
+
+    }
+
+
+    document.getElementById(
+        'bookingModal'
+    ).classList.remove(
+        'hidden'
+    );
+
+}
+
+
+function closeBookingModal() {
+
+    document.getElementById(
+        'bookingModal'
+    ).classList.add(
+        'hidden'
+    );
+
+}
+
+
+// =====================================================
+// TOAST
+// =====================================================
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById(
+            'toast'
+        );
+
+
+    if (!toast) {
+        return;
+    }
+
+
+    const msgElem =
+        document.getElementById(
+            'toastMessage'
+        );
+
+
+    if (msgElem) {
+
+        msgElem.innerText =
+            message;
+
+    }
+
+
+    toast.classList.remove(
+        'translate-y-20',
+        'opacity-0'
+    );
+
+
+    setTimeout(
+        () => {
+
+            toast.classList.add(
+                'translate-y-20',
+                'opacity-0'
+            );
+
+        },
+        3000
+    );
+
+}
+
+
+// =====================================================
+// เปิดเว็บ
+// =====================================================
+
+window.onload = async function() {
+    switchAuthView('student-login');
+    renderRooms();
+    await loadBookingsFromCloud();
+
+    const savedUser = localStorage.getItem('sskru_current_user');
+    if (!savedUser) return;
+
+    try {
+        currentUser = JSON.parse(savedUser);
+
+        if (
+            !currentUser ||
+            !currentUser.stdId ||
+            !['student', 'admin'].includes(currentUser.role)
+        ) {
+            throw new Error('Invalid session');
+        }
+
+        await setupSession();
+    } catch (error) {
+        localStorage.removeItem('sskru_current_user');
+        currentUser = null;
+        switchAuthView('student-login');
+    }
+};
+
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState !== 'visible' || !currentUser) return;
+
+    await loadBookingsFromCloud();
+
+    if (currentUser.role === 'student') {
+        await loadNotifications();
+    }
+});
+    </script>
+</body>
+</html>
